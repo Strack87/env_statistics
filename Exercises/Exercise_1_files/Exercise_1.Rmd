@@ -1,0 +1,140 @@
+---
+title: "Environmental Statistics"
+author: "Strachinaru Andrei Lucian"
+matrikel_number: "#####"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  html_document:
+    theme: united
+    highlight: haddock
+    toc: yes
+    toc_float: yes
+    fig_width: 8  
+    fig_height: 5
+    df_print: paged
+  pdf_document:
+    toc: yes
+editor_options:
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(paged.print = FALSE)
+```
+
+# Exercise 2
+
+## Exercise 1.1
+
+Calculate the first 50 power values of 2, i.e., **$2^{1}=1, 2^{2}=4, ...$**
+. Then calculate the squares of all integer numbers from 1 to 50, i.e. **$1^{2}=1∗1=1, 2^{2}=2∗2=4, ...$**
+ and so on. Which of the number pairs fulfill the condition **$2^{n}=n*{2}$**
+?
+
+```{r ex_1.1}
+#define p, s as a 50 dimensional vector
+p <- numeric(50)
+s <- numeric(50)
+#iterate from 1 to 50 and calculate p and s
+for (x in 1:50){
+  p[x] <- 2 ^ x
+  s[x] <- x ^ x
+}
+#print p
+print(p)
+#print s
+print(s)
+#iterate for all the values and verify the if and print the conditions
+for (x in 1:50){
+  if( 2 ^ x == x * 2){
+    cat("x =", x, "| 2 ^", x, "==", x, "* 2", "\n")
+  }
+}
+
+```
+
+## Exercise 1.2
+
+For the numbers 0, 0.1, 0.2, …, 2π calculate sine, cosine and tangent using the R functions sin(), cos(), tan(). Alternatively, calculate tangent using the equation tan(x)=sin(x)/cos(x). Compare both calculation methods for the tangent. How many numbers are equal, and what is the largest difference between both calculations?
+
+```{r ex_1.2}
+#generate numbers that hav 0.1 increments from 0 to 2 * pi
+x <- seq(0, 2 * pi, by = 0.1)
+#definie a vector that contains the absolute values of the difference between tan and sin/cos
+tan_diff <- abs(tan(x) - sin(x)/cos(x))
+#define a data.frame with x, sine, cousine, and the both tangents that are calculated using different methods
+results <- data.frame(
+  x = round(x, 3),
+  sine = round(sin(x), 3), #radians
+  cosine = round(cos(x), 3), #radians
+  tang_r = tan(x), #radians
+  tang_div = sin(x)/cos(x), #radians
+  tan_diff #radians
+)
+#display the results
+print(results)
+#display the maximum value of the difference between both methods used to calculate the tangent
+cat("Max difference is: ", max(tan_diff), " radians.")
+#second method to calculate and display the maximum difference between both tangent methods
+difference <- abs(results$tang_r - results$tang_div)
+max_difference <- max(difference)
+cat("Max difference between tang_r and tang_div is", max_difference, " radians.")
+
+#compare the results and store the results that are equal into a vector compare
+compare <- results$tang_r == results$tang_div
+#add the values to count the number of times the condition of equality is fulfilled
+count_equal <- sum(compare)
+cat("There are", count_equal, "out of", length(x), "values that are equal.")
+
+
+```
+
+## Exercise 1.3
+
+Here we use the dataset ngaruroro of the package lfstat, which contains daily streamflow data from an Australian stream gauge. Use install.packages(), library(), and data() to install the package from CRAN and load the data. Then inspect the dataset using the str(), head(), tail() and class() commands. Finally perform the following tasks:
+
+- *Select the flow record of 1999 (and store it as an own object).*
+- *Plot the flow record of 1999 (hint: maybe the generic function plot() will be so clever to offer a dedicated plot for the lfstat data class).*
+- *What is the mean flow of the year 1999?*
+- *On which day was the annual maximum flow recorded in 1999?*
+
+```{r ex_1.3, warning=FALSE, message=FALSE}
+
+#install packages if they are missing
+if (!require("lfstat")) install.packages("lfstat")
+if (!require("DT")) install.packages("DT")
+
+#access libraries
+library(lfstat)
+library(DT)
+
+#access the dataset named "ngaruroro"
+data(ngaruroro)
+#assign the dataset to "streamflow"
+streamflow <- ngaruroro
+
+#display the first 10 rows as a table using knitr
+knitr::kable(head(streamflow, 10))
+#another way to display all the data inro an R Markdown file without agglomarate it
+DT::datatable(streamflow)
+
+#assign to flow_1999 all the data from the year 1999
+flow_1999 <- streamflow[streamflow$year == 1999, ]
+
+#plot the data without assigning anything to x and y
+plot(flow_1999)
+
+#calculate mean flow
+mean_flow <- mean(flow_1999$flow, na.rm = "TRUE")
+cat("Mean flow value is ", round(mean_flow, 4), " m³/s .", sep="")
+
+#calculate max flow
+max_flow <- max(flow_1999$flow)
+#identify the day when the max flow was recorded
+max_day_index <- which.max(flow_1999$flow)
+max_day <- flow_1999$day[max_day_index]
+#display the message
+cat("The annual maximum flow recorded on ", flow_1999$day[max_day_index],".",flow_1999$month[max_day_index],".", 
+flow_1999$year[max_day_index]," was ", flow_1999$flow[max_day_index], " m³/s.",sep = "")
+
+```

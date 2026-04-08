@@ -1,0 +1,19 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+.Ruserdata
+
+# R Markdown / knitr
+*_cache/
+*_files/
+*.knit.md
+*.utf8.md
+
+# Output files
+*.docx
+
+# OS
+.DS_Store
+Thumbs.db

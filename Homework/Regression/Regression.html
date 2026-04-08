@@ -1,0 +1,1915 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Andrei Strachinaru">
+<meta name="dcterms.date" content="2026-03-30">
+
+<title>Regression Homework</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Regression_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Regression_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="Regression_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="Regression_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="Regression_files/libs/quarto-html/popper.min.js"></script>
+<script src="Regression_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Regression_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Regression_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Regression_files/libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Regression_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Regression_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Regression_files/libs/bootstrap/bootstrap-9e3ffae467580fdb927a41352e75a2e0.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Regression Homework</h1>
+<p class="subtitle lead">Environmental Engineering</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Andrei Strachinaru </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">March 30, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="data" class="level1">
+<h1>Data</h1>
+<p>For gauging stations in Upper Austria we want to explain the low-flow index Q95 from different catchment characteristics. The variables are:</p>
+<ul>
+<li><strong>DBMSNR</strong> — database number (primary key, not used as regressor)</li>
+<li><strong>Q95</strong> — low-flow index (l/s/km²) — <em>response variable</em></li>
+<li><strong>H.MIN</strong> — altitude of the lowest point in the catchment (10⁻² m.a.s.l.)</li>
+<li><strong>H.MEAN</strong> — mean sea level within the catchment (10⁻² m.a.s.l.)</li>
+<li><strong>M.NEIG</strong> — mean terrain slope (%)</li>
+<li><strong>N.GES</strong> — total precipitation (10⁻² mm)</li>
+<li><strong>GEOL.BM / GEOL.QUA2 / GEOL.TER / GEOL.QUELL</strong> — fraction of geologic classes</li>
+<li><strong>BONU.ACK / BONU.GRU / BONU.WAL</strong> — fraction of land-use classes</li>
+<li><strong>SDENS</strong> — stream-network density</li>
+</ul>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>q95 <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">DBMSNR    =</span> <span class="fu">c</span>(<span class="dv">200001</span>, <span class="dv">200002</span>, <span class="dv">200003</span>, <span class="dv">200004</span>, <span class="dv">200005</span>, <span class="dv">200006</span>, <span class="dv">200007</span>, <span class="dv">200008</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>                <span class="dv">200009</span>, <span class="dv">200010</span>, <span class="dv">200011</span>, <span class="dv">200012</span>, <span class="dv">200013</span>, <span class="dv">200014</span>, <span class="dv">200015</span>, <span class="dv">200016</span>,</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>                <span class="dv">200017</span>, <span class="dv">200018</span>, <span class="dv">200019</span>, <span class="dv">200020</span>, <span class="dv">200021</span>, <span class="dv">200022</span>, <span class="dv">200023</span>, <span class="dv">200024</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>                <span class="dv">200025</span>, <span class="dv">200026</span>, <span class="dv">200027</span>, <span class="dv">200028</span>, <span class="dv">200029</span>, <span class="dv">200030</span>, <span class="dv">200031</span>, <span class="dv">200032</span>,</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                <span class="dv">200033</span>, <span class="dv">200034</span>, <span class="dv">200035</span>, <span class="dv">200036</span>),</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">Q95       =</span> <span class="fu">c</span>(<span class="fl">4.13</span>, <span class="fl">3.16</span>, <span class="fl">4.63</span>, <span class="fl">4.74</span>, <span class="fl">3.24</span>, <span class="fl">8.00</span>, <span class="fl">2.83</span>, <span class="fl">4.21</span>, <span class="fl">3.31</span>, <span class="fl">4.97</span>,</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>                <span class="fl">3.94</span>, <span class="fl">3.23</span>, <span class="fl">3.60</span>, <span class="fl">5.19</span>, <span class="fl">4.98</span>, <span class="fl">5.87</span>, <span class="fl">5.49</span>, <span class="fl">8.78</span>, <span class="fl">7.47</span>, <span class="fl">6.28</span>,</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>                <span class="fl">3.07</span>, <span class="fl">5.90</span>, <span class="fl">1.71</span>, <span class="fl">1.58</span>, <span class="fl">2.14</span>, <span class="fl">3.48</span>, <span class="fl">2.81</span>, <span class="fl">4.79</span>, <span class="fl">4.67</span>, <span class="fl">9.80</span>,</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>                <span class="fl">6.52</span>, <span class="fl">3.58</span>, <span class="fl">13.29</span>, <span class="fl">2.97</span>, <span class="fl">6.91</span>, <span class="fl">3.15</span>),</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">H.MIN     =</span> <span class="fu">c</span>(<span class="fl">3.41</span>, <span class="fl">3.63</span>, <span class="fl">6.01</span>, <span class="fl">2.67</span>, <span class="fl">3.89</span>, <span class="fl">3.97</span>, <span class="fl">4.50</span>, <span class="fl">3.53</span>, <span class="fl">3.73</span>, <span class="fl">3.62</span>,</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>                <span class="fl">5.44</span>, <span class="fl">3.18</span>, <span class="fl">2.74</span>, <span class="fl">4.32</span>, <span class="fl">2.77</span>, <span class="fl">3.87</span>, <span class="fl">3.47</span>, <span class="fl">3.38</span>, <span class="fl">4.33</span>, <span class="fl">4.89</span>,</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>                <span class="fl">3.52</span>, <span class="fl">3.41</span>, <span class="fl">3.78</span>, <span class="fl">3.97</span>, <span class="fl">3.86</span>, <span class="fl">4.22</span>, <span class="fl">3.74</span>, <span class="fl">3.82</span>, <span class="fl">3.30</span>, <span class="fl">5.35</span>,</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>                <span class="fl">4.82</span>, <span class="fl">3.38</span>, <span class="fl">3.61</span>, <span class="fl">3.68</span>, <span class="fl">3.71</span>, <span class="fl">3.26</span>),</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">H.MEAN    =</span> <span class="fu">c</span>(<span class="fl">4.20497</span>, <span class="fl">4.678</span>, <span class="fl">7.137</span>, <span class="fl">3.543</span>, <span class="fl">5.25688</span>, <span class="fl">4.454</span>, <span class="fl">5.229</span>, <span class="fl">4.42</span>,</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>                <span class="fl">4.004</span>, <span class="fl">4.462</span>, <span class="fl">6.024</span>, <span class="fl">3.706</span>, <span class="fl">3.726</span>, <span class="fl">5.345</span>, <span class="fl">3.97624</span>, <span class="fl">5.14148</span>,</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>                <span class="fl">3.818</span>, <span class="fl">4.82799</span>, <span class="fl">5.077</span>, <span class="fl">6.076</span>, <span class="fl">4.168</span>, <span class="fl">4.598</span>, <span class="fl">4.404</span>, <span class="fl">4.40</span>,</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>                <span class="fl">4.198</span>, <span class="fl">4.937</span>, <span class="fl">4.558</span>, <span class="fl">4.498</span>, <span class="fl">4.061</span>, <span class="fl">6.313</span>, <span class="fl">6.152</span>, <span class="fl">4.10931</span>,</span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>                <span class="fl">5.00748</span>, <span class="fl">4.24</span>, <span class="fl">5.162</span>, <span class="fl">3.718</span>),</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">M.NEIG    =</span> <span class="fu">c</span>(<span class="fl">5.4</span>, <span class="fl">11.3</span>, <span class="fl">12.9</span>, <span class="fl">3.3</span>, <span class="fl">10.2</span>, <span class="fl">3.9</span>, <span class="fl">9.9</span>, <span class="fl">7.9</span>, <span class="fl">8.0</span>, <span class="fl">3.5</span>, <span class="fl">10.5</span>,</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>                <span class="fl">5.9</span>, <span class="fl">7.0</span>, <span class="fl">9.4</span>, <span class="fl">4.5</span>, <span class="fl">9.6</span>, <span class="fl">9.3</span>, <span class="fl">9.3</span>, <span class="fl">9.9</span>, <span class="fl">12.0</span>, <span class="fl">8.0</span>, <span class="fl">8.6</span>,</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>                <span class="fl">8.2</span>, <span class="fl">7.2</span>, <span class="fl">8.3</span>, <span class="fl">10.2</span>, <span class="fl">9.6</span>, <span class="fl">6.7</span>, <span class="fl">8.2</span>, <span class="fl">12.1</span>, <span class="fl">13.9</span>, <span class="fl">8.5</span>, <span class="fl">8.3</span>,</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>                <span class="fl">8.0</span>, <span class="fl">10.8</span>, <span class="fl">9.0</span>),</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">N.GES     =</span> <span class="fu">c</span>(<span class="fl">8.48586</span>, <span class="fl">9.078</span>, <span class="fl">10.761</span>, <span class="fl">8.07</span>, <span class="fl">9.31489</span>, <span class="fl">9.355</span>, <span class="fl">9.41</span>, <span class="fl">8.475</span>,</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>                <span class="fl">8.578</span>, <span class="fl">9.683</span>, <span class="fl">10.149</span>, <span class="fl">7.933</span>, <span class="fl">7.829</span>, <span class="fl">9.925</span>, <span class="fl">8.84651</span>, <span class="fl">9.57801</span>,</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>                <span class="fl">9.082</span>, <span class="fl">9.64408</span>, <span class="fl">9.792</span>, <span class="fl">10.564</span>, <span class="fl">8.689</span>, <span class="fl">8.801</span>, <span class="fl">9.051</span>, <span class="fl">9.114</span>,</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>                <span class="fl">8.756</span>, <span class="fl">9.084</span>, <span class="fl">9.087</span>, <span class="fl">9.304</span>, <span class="fl">8.262</span>, <span class="fl">10.389</span>, <span class="fl">10.409</span>, <span class="fl">8.92126</span>,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>                <span class="fl">10.37569</span>, <span class="fl">8.77</span>, <span class="fl">9.281</span>, <span class="fl">8.686</span>),</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">GEOL.BM   =</span> <span class="fu">c</span>(<span class="fl">1.43</span>, <span class="fl">67.99</span>, <span class="fl">0.78</span>, <span class="fl">0.00</span>, <span class="fl">1.18</span>, <span class="fl">0.00</span>, <span class="fl">1.11</span>, <span class="fl">44.19</span>, <span class="fl">0.40</span>,</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>                <span class="fl">0.00</span>, <span class="fl">0.33</span>, <span class="fl">1.08</span>, <span class="fl">0.81</span>, <span class="fl">0.09</span>, <span class="fl">0.00</span>, <span class="fl">0.64</span>, <span class="fl">3.12</span>, <span class="fl">1.85</span>, <span class="fl">1.92</span>,</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>                <span class="fl">1.36</span>, <span class="fl">1.97</span>, <span class="fl">1.08</span>, <span class="fl">0.87</span>, <span class="fl">1.44</span>, <span class="fl">1.69</span>, <span class="fl">52.21</span>, <span class="fl">0.79</span>, <span class="fl">0.25</span>, <span class="fl">0.09</span>,</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>                <span class="fl">0.40</span>, <span class="fl">1.71</span>, <span class="fl">3.85</span>, <span class="fl">1.70</span>, <span class="fl">5.73</span>, <span class="fl">83.95</span>, <span class="fl">9.77</span>),</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">GEOL.QUA2 =</span> <span class="fu">c</span>(<span class="fl">6.1</span>, <span class="fl">0.0</span>, <span class="fl">1.9</span>, <span class="fl">76.1</span>, <span class="fl">44.5</span>, <span class="fl">68.8</span>, <span class="fl">0.0</span>, <span class="fl">0.2</span>, <span class="fl">74.1</span>, <span class="fl">77.9</span>, <span class="fl">0.0</span>,</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>                <span class="fl">13.3</span>, <span class="fl">18.8</span>, <span class="fl">11.1</span>, <span class="fl">75.0</span>, <span class="fl">12.5</span>, <span class="fl">0.0</span>, <span class="fl">34.5</span>, <span class="fl">1.0</span>, <span class="fl">9.0</span>, <span class="fl">42.5</span>,</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>                <span class="fl">14.2</span>, <span class="fl">7.1</span>, <span class="fl">0.0</span>, <span class="fl">21.3</span>, <span class="fl">0.0</span>, <span class="fl">2.7</span>, <span class="fl">38.6</span>, <span class="fl">26.8</span>, <span class="fl">8.9</span>, <span class="fl">11.4</span>, <span class="fl">13.5</span>,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>                <span class="fl">62.0</span>, <span class="fl">56.3</span>, <span class="fl">0.0</span>, <span class="fl">28.8</span>),</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>  <span class="at">GEOL.TER  =</span> <span class="fu">c</span>(<span class="fl">90.99</span>, <span class="fl">29.54</span>, <span class="fl">94.61</span>, <span class="fl">0.00</span>, <span class="fl">51.98</span>, <span class="fl">0.00</span>, <span class="fl">97.34</span>, <span class="fl">52.08</span>, <span class="fl">24.54</span>,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>                <span class="fl">4.20</span>, <span class="fl">98.53</span>, <span class="fl">82.71</span>, <span class="fl">78.01</span>, <span class="fl">88.10</span>, <span class="fl">0.00</span>, <span class="fl">85.98</span>, <span class="fl">94.57</span>, <span class="fl">61.72</span>,</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>                <span class="fl">94.41</span>, <span class="fl">88.26</span>, <span class="fl">52.21</span>, <span class="fl">83.18</span>, <span class="fl">90.46</span>, <span class="fl">95.39</span>, <span class="fl">74.10</span>, <span class="fl">47.21</span>, <span class="fl">95.21</span>,</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>                <span class="fl">59.69</span>, <span class="fl">72.08</span>, <span class="fl">89.72</span>, <span class="fl">85.11</span>, <span class="fl">81.11</span>, <span class="fl">26.21</span>, <span class="fl">35.26</span>, <span class="fl">12.43</span>, <span class="fl">59.62</span>),</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">GEOL.QUELL=</span> <span class="fu">c</span>(<span class="fl">0.05</span>, <span class="fl">1.38</span>, <span class="fl">1.93</span>, <span class="fl">23.90</span>, <span class="fl">1.16</span>, <span class="fl">31.20</span>, <span class="fl">0.44</span>, <span class="fl">1.84</span>, <span class="fl">0.56</span>,</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>                <span class="fl">17.70</span>, <span class="fl">0.81</span>, <span class="fl">1.83</span>, <span class="fl">1.57</span>, <span class="fl">0.62</span>, <span class="fl">20.90</span>, <span class="fl">0.24</span>, <span class="fl">0.89</span>, <span class="fl">0.18</span>, <span class="fl">0.75</span>,</span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>                <span class="fl">0.02</span>, <span class="fl">1.35</span>, <span class="fl">0.46</span>, <span class="fl">0.70</span>, <span class="fl">1.73</span>, <span class="fl">1.22</span>, <span class="fl">0.17</span>, <span class="fl">0.51</span>, <span class="fl">1.11</span>, <span class="fl">1.04</span>,</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>                <span class="fl">0.58</span>, <span class="fl">0.07</span>, <span class="fl">0.89</span>, <span class="fl">0.99</span>, <span class="fl">1.18</span>, <span class="fl">1.77</span>, <span class="fl">1.64</span>),</span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>  <span class="at">BONU.ACK  =</span> <span class="fu">c</span>(<span class="fl">88.07</span>, <span class="fl">43.51</span>, <span class="sc">-</span><span class="fl">0.78</span>, <span class="fl">92.50</span>, <span class="fl">38.32</span>, <span class="fl">97.30</span>, <span class="fl">47.09</span>, <span class="fl">65.51</span>,</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>                <span class="fl">56.70</span>, <span class="fl">92.40</span>, <span class="fl">31.57</span>, <span class="fl">87.62</span>, <span class="fl">86.89</span>, <span class="fl">54.91</span>, <span class="fl">84.40</span>, <span class="fl">67.56</span>, <span class="fl">74.38</span>,</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>                <span class="fl">65.35</span>, <span class="fl">66.38</span>, <span class="fl">10.44</span>, <span class="fl">66.53</span>, <span class="fl">81.82</span>, <span class="fl">68.53</span>, <span class="fl">73.76</span>, <span class="fl">60.01</span>, <span class="fl">28.99</span>,</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>                <span class="fl">73.51</span>, <span class="fl">82.25</span>, <span class="fl">84.21</span>, <span class="fl">51.20</span>, <span class="fl">17.29</span>, <span class="fl">59.25</span>, <span class="fl">38.00</span>, <span class="fl">47.47</span>, <span class="fl">21.45</span>,</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>                <span class="fl">78.73</span>),</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>  <span class="at">BONU.GRU  =</span> <span class="fu">c</span>(<span class="fl">0.0</span>, <span class="fl">52.2</span>, <span class="fl">0.0</span>, <span class="fl">2.4</span>, <span class="fl">41.2</span>, <span class="fl">1.9</span>, <span class="fl">35.7</span>, <span class="fl">26.9</span>, <span class="fl">38.5</span>, <span class="fl">6.8</span>,</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>                <span class="fl">27.1</span>, <span class="fl">0.7</span>, <span class="fl">4.3</span>, <span class="fl">34.1</span>, <span class="fl">6.9</span>, <span class="fl">15.3</span>, <span class="fl">20.5</span>, <span class="fl">14.4</span>, <span class="fl">25.5</span>, <span class="fl">45.2</span>,</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>                <span class="fl">22.2</span>, <span class="fl">5.3</span>, <span class="fl">26.3</span>, <span class="fl">22.1</span>, <span class="fl">35.1</span>, <span class="fl">51.0</span>, <span class="fl">22.3</span>, <span class="fl">10.9</span>, <span class="fl">1.7</span>, <span class="fl">6.4</span>,</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>                <span class="fl">35.0</span>, <span class="fl">35.2</span>, <span class="fl">33.5</span>, <span class="fl">44.2</span>, <span class="fl">51.6</span>, <span class="fl">14.6</span>),</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>  <span class="at">BONU.WAL  =</span> <span class="fu">c</span>(<span class="fl">9.8</span>, <span class="fl">3.2</span>, <span class="fl">100.0</span>, <span class="fl">4.7</span>, <span class="fl">19.3</span>, <span class="fl">0.8</span>, <span class="fl">16.1</span>, <span class="fl">5.6</span>, <span class="fl">4.4</span>, <span class="fl">0.7</span>, <span class="fl">41.1</span>,</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a>                <span class="fl">10.6</span>, <span class="fl">6.5</span>, <span class="fl">6.7</span>, <span class="fl">7.5</span>, <span class="fl">14.9</span>, <span class="fl">3.7</span>, <span class="fl">18.1</span>, <span class="fl">6.2</span>, <span class="fl">43.0</span>, <span class="fl">8.0</span>, <span class="fl">10.9</span>,</span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>                <span class="fl">3.7</span>, <span class="fl">2.7</span>, <span class="fl">1.5</span>, <span class="fl">19.1</span>, <span class="fl">3.4</span>, <span class="fl">6.6</span>, <span class="fl">11.1</span>, <span class="fl">42.0</span>, <span class="fl">46.0</span>, <span class="fl">3.7</span>, <span class="fl">25.7</span>,</span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>                <span class="fl">5.7</span>, <span class="fl">25.1</span>, <span class="fl">6.5</span>),</span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>  <span class="at">SDENS     =</span> <span class="fu">c</span>(<span class="fl">7.65</span>, <span class="fl">9.13</span>, <span class="fl">8.74</span>, <span class="fl">6.09</span>, <span class="fl">9.86</span>, <span class="fl">6.55</span>, <span class="fl">9.40</span>, <span class="fl">9.67</span>, <span class="fl">8.64</span>, <span class="fl">5.55</span>,</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a>                <span class="fl">9.71</span>, <span class="fl">7.08</span>, <span class="fl">8.54</span>, <span class="fl">9.91</span>, <span class="fl">8.36</span>, <span class="fl">9.17</span>, <span class="fl">9.59</span>, <span class="fl">7.97</span>, <span class="fl">9.72</span>, <span class="fl">10.09</span>,</span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>                <span class="fl">10.14</span>, <span class="fl">8.30</span>, <span class="fl">11.12</span>, <span class="fl">11.13</span>, <span class="fl">9.79</span>, <span class="fl">9.42</span>, <span class="fl">10.02</span>, <span class="fl">8.04</span>, <span class="fl">8.17</span>,</span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>                <span class="fl">10.86</span>, <span class="fl">8.45</span>, <span class="fl">10.93</span>, <span class="fl">8.65</span>, <span class="fl">10.47</span>, <span class="fl">9.36</span>, <span class="fl">10.96</span>)</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co"># Quick overview</span></span>
+<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="fu">str</span>(q95)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>'data.frame':   36 obs. of  14 variables:
+ $ DBMSNR    : num  2e+05 2e+05 2e+05 2e+05 2e+05 ...
+ $ Q95       : num  4.13 3.16 4.63 4.74 3.24 8 2.83 4.21 3.31 4.97 ...
+ $ H.MIN     : num  3.41 3.63 6.01 2.67 3.89 3.97 4.5 3.53 3.73 3.62 ...
+ $ H.MEAN    : num  4.2 4.68 7.14 3.54 5.26 ...
+ $ M.NEIG    : num  5.4 11.3 12.9 3.3 10.2 3.9 9.9 7.9 8 3.5 ...
+ $ N.GES     : num  8.49 9.08 10.76 8.07 9.31 ...
+ $ GEOL.BM   : num  1.43 67.99 0.78 0 1.18 ...
+ $ GEOL.QUA2 : num  6.1 0 1.9 76.1 44.5 68.8 0 0.2 74.1 77.9 ...
+ $ GEOL.TER  : num  91 29.5 94.6 0 52 ...
+ $ GEOL.QUELL: num  0.05 1.38 1.93 23.9 1.16 31.2 0.44 1.84 0.56 17.7 ...
+ $ BONU.ACK  : num  88.07 43.51 -0.78 92.5 38.32 ...
+ $ BONU.GRU  : num  0 52.2 0 2.4 41.2 1.9 35.7 26.9 38.5 6.8 ...
+ $ BONU.WAL  : num  9.8 3.2 100 4.7 19.3 0.8 16.1 5.6 4.4 0.7 ...
+ $ SDENS     : num  7.65 9.13 8.74 6.09 9.86 6.55 9.4 9.67 8.64 5.55 ...</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(q95[, <span class="fu">c</span>(<span class="st">"Q95"</span>, <span class="st">"H.MIN"</span>, <span class="st">"H.MEAN"</span>, <span class="st">"M.NEIG"</span>, <span class="st">"N.GES"</span>, <span class="st">"SDENS"</span>)])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      Q95            H.MIN          H.MEAN         M.NEIG          N.GES      
+ Min.   : 1.58   Min.   :2.67   Min.   :3.54   Min.   : 3.30   Min.   : 7.83  
+ 1st Qu.: 3.21   1st Qu.:3.41   1st Qu.:4.15   1st Qu.: 7.72   1st Qu.: 8.74  
+ Median : 4.42   Median :3.72   Median :4.48   Median : 8.55   Median : 9.09  
+ Mean   : 4.84   Mean   :3.85   Mean   :4.71   Mean   : 8.59   Mean   : 9.21  
+ 3rd Qu.: 5.88   3rd Qu.:4.03   3rd Qu.:5.15   3rd Qu.: 9.97   3rd Qu.: 9.65  
+ Max.   :13.29   Max.   :6.01   Max.   :7.14   Max.   :13.90   Max.   :10.76  
+     SDENS      
+ Min.   : 5.55  
+ 1st Qu.: 8.35  
+ Median : 9.38  
+ Mean   : 9.09  
+ 3rd Qu.: 9.94  
+ Max.   :11.13  </code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(knitr)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(q95,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>      <span class="at">digits  =</span> <span class="dv">3</span>,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> <span class="st">"Q95 dataset — gauging stations in Upper Austria"</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">booktabs =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>      <span class="at">align   =</span> <span class="st">"r"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Q95 dataset — gauging stations in Upper Austria</caption>
+<colgroup>
+<col style="width: 6%">
+<col style="width: 5%">
+<col style="width: 5%">
+<col style="width: 6%">
+<col style="width: 6%">
+<col style="width: 6%">
+<col style="width: 7%">
+<col style="width: 9%">
+<col style="width: 8%">
+<col style="width: 9%">
+<col style="width: 8%">
+<col style="width: 8%">
+<col style="width: 8%">
+<col style="width: 5%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;">DBMSNR</th>
+<th style="text-align: right;">Q95</th>
+<th style="text-align: right;">H.MIN</th>
+<th style="text-align: right;">H.MEAN</th>
+<th style="text-align: right;">M.NEIG</th>
+<th style="text-align: right;">N.GES</th>
+<th style="text-align: right;">GEOL.BM</th>
+<th style="text-align: right;">GEOL.QUA2</th>
+<th style="text-align: right;">GEOL.TER</th>
+<th style="text-align: right;">GEOL.QUELL</th>
+<th style="text-align: right;">BONU.ACK</th>
+<th style="text-align: right;">BONU.GRU</th>
+<th style="text-align: right;">BONU.WAL</th>
+<th style="text-align: right;">SDENS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">4.13</td>
+<td style="text-align: right;">3.41</td>
+<td style="text-align: right;">4.205</td>
+<td style="text-align: right;">5.4</td>
+<td style="text-align: right;">8.486</td>
+<td style="text-align: right;">1.43</td>
+<td style="text-align: right;">6.1</td>
+<td style="text-align: right;">90.99</td>
+<td style="text-align: right;">0.05</td>
+<td style="text-align: right;">88.07</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">9.8</td>
+<td style="text-align: right;">7.65</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.16</td>
+<td style="text-align: right;">3.63</td>
+<td style="text-align: right;">4.678</td>
+<td style="text-align: right;">11.3</td>
+<td style="text-align: right;">9.078</td>
+<td style="text-align: right;">67.99</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">29.54</td>
+<td style="text-align: right;">1.38</td>
+<td style="text-align: right;">43.51</td>
+<td style="text-align: right;">52.2</td>
+<td style="text-align: right;">3.2</td>
+<td style="text-align: right;">9.13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">4.63</td>
+<td style="text-align: right;">6.01</td>
+<td style="text-align: right;">7.137</td>
+<td style="text-align: right;">12.9</td>
+<td style="text-align: right;">10.761</td>
+<td style="text-align: right;">0.78</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: right;">94.61</td>
+<td style="text-align: right;">1.93</td>
+<td style="text-align: right;">-0.78</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">100.0</td>
+<td style="text-align: right;">8.74</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">4.74</td>
+<td style="text-align: right;">2.67</td>
+<td style="text-align: right;">3.543</td>
+<td style="text-align: right;">3.3</td>
+<td style="text-align: right;">8.070</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">76.1</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">23.90</td>
+<td style="text-align: right;">92.50</td>
+<td style="text-align: right;">2.4</td>
+<td style="text-align: right;">4.7</td>
+<td style="text-align: right;">6.09</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.24</td>
+<td style="text-align: right;">3.89</td>
+<td style="text-align: right;">5.257</td>
+<td style="text-align: right;">10.2</td>
+<td style="text-align: right;">9.315</td>
+<td style="text-align: right;">1.18</td>
+<td style="text-align: right;">44.5</td>
+<td style="text-align: right;">51.98</td>
+<td style="text-align: right;">1.16</td>
+<td style="text-align: right;">38.32</td>
+<td style="text-align: right;">41.2</td>
+<td style="text-align: right;">19.3</td>
+<td style="text-align: right;">9.86</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">8.00</td>
+<td style="text-align: right;">3.97</td>
+<td style="text-align: right;">4.454</td>
+<td style="text-align: right;">3.9</td>
+<td style="text-align: right;">9.355</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">68.8</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">31.20</td>
+<td style="text-align: right;">97.30</td>
+<td style="text-align: right;">1.9</td>
+<td style="text-align: right;">0.8</td>
+<td style="text-align: right;">6.55</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">2.83</td>
+<td style="text-align: right;">4.50</td>
+<td style="text-align: right;">5.229</td>
+<td style="text-align: right;">9.9</td>
+<td style="text-align: right;">9.410</td>
+<td style="text-align: right;">1.11</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">97.34</td>
+<td style="text-align: right;">0.44</td>
+<td style="text-align: right;">47.09</td>
+<td style="text-align: right;">35.7</td>
+<td style="text-align: right;">16.1</td>
+<td style="text-align: right;">9.40</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">4.21</td>
+<td style="text-align: right;">3.53</td>
+<td style="text-align: right;">4.420</td>
+<td style="text-align: right;">7.9</td>
+<td style="text-align: right;">8.475</td>
+<td style="text-align: right;">44.19</td>
+<td style="text-align: right;">0.2</td>
+<td style="text-align: right;">52.08</td>
+<td style="text-align: right;">1.84</td>
+<td style="text-align: right;">65.51</td>
+<td style="text-align: right;">26.9</td>
+<td style="text-align: right;">5.6</td>
+<td style="text-align: right;">9.67</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.31</td>
+<td style="text-align: right;">3.73</td>
+<td style="text-align: right;">4.004</td>
+<td style="text-align: right;">8.0</td>
+<td style="text-align: right;">8.578</td>
+<td style="text-align: right;">0.40</td>
+<td style="text-align: right;">74.1</td>
+<td style="text-align: right;">24.54</td>
+<td style="text-align: right;">0.56</td>
+<td style="text-align: right;">56.70</td>
+<td style="text-align: right;">38.5</td>
+<td style="text-align: right;">4.4</td>
+<td style="text-align: right;">8.64</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">4.97</td>
+<td style="text-align: right;">3.62</td>
+<td style="text-align: right;">4.462</td>
+<td style="text-align: right;">3.5</td>
+<td style="text-align: right;">9.683</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">77.9</td>
+<td style="text-align: right;">4.20</td>
+<td style="text-align: right;">17.70</td>
+<td style="text-align: right;">92.40</td>
+<td style="text-align: right;">6.8</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">5.55</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.94</td>
+<td style="text-align: right;">5.44</td>
+<td style="text-align: right;">6.024</td>
+<td style="text-align: right;">10.5</td>
+<td style="text-align: right;">10.149</td>
+<td style="text-align: right;">0.33</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">98.53</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">31.57</td>
+<td style="text-align: right;">27.1</td>
+<td style="text-align: right;">41.1</td>
+<td style="text-align: right;">9.71</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.23</td>
+<td style="text-align: right;">3.18</td>
+<td style="text-align: right;">3.706</td>
+<td style="text-align: right;">5.9</td>
+<td style="text-align: right;">7.933</td>
+<td style="text-align: right;">1.08</td>
+<td style="text-align: right;">13.3</td>
+<td style="text-align: right;">82.71</td>
+<td style="text-align: right;">1.83</td>
+<td style="text-align: right;">87.62</td>
+<td style="text-align: right;">0.7</td>
+<td style="text-align: right;">10.6</td>
+<td style="text-align: right;">7.08</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.60</td>
+<td style="text-align: right;">2.74</td>
+<td style="text-align: right;">3.726</td>
+<td style="text-align: right;">7.0</td>
+<td style="text-align: right;">7.829</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">18.8</td>
+<td style="text-align: right;">78.01</td>
+<td style="text-align: right;">1.57</td>
+<td style="text-align: right;">86.89</td>
+<td style="text-align: right;">4.3</td>
+<td style="text-align: right;">6.5</td>
+<td style="text-align: right;">8.54</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">5.19</td>
+<td style="text-align: right;">4.32</td>
+<td style="text-align: right;">5.345</td>
+<td style="text-align: right;">9.4</td>
+<td style="text-align: right;">9.925</td>
+<td style="text-align: right;">0.09</td>
+<td style="text-align: right;">11.1</td>
+<td style="text-align: right;">88.10</td>
+<td style="text-align: right;">0.62</td>
+<td style="text-align: right;">54.91</td>
+<td style="text-align: right;">34.1</td>
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">9.91</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">4.98</td>
+<td style="text-align: right;">2.77</td>
+<td style="text-align: right;">3.976</td>
+<td style="text-align: right;">4.5</td>
+<td style="text-align: right;">8.847</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">75.0</td>
+<td style="text-align: right;">0.00</td>
+<td style="text-align: right;">20.90</td>
+<td style="text-align: right;">84.40</td>
+<td style="text-align: right;">6.9</td>
+<td style="text-align: right;">7.5</td>
+<td style="text-align: right;">8.36</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">5.87</td>
+<td style="text-align: right;">3.87</td>
+<td style="text-align: right;">5.141</td>
+<td style="text-align: right;">9.6</td>
+<td style="text-align: right;">9.578</td>
+<td style="text-align: right;">0.64</td>
+<td style="text-align: right;">12.5</td>
+<td style="text-align: right;">85.98</td>
+<td style="text-align: right;">0.24</td>
+<td style="text-align: right;">67.56</td>
+<td style="text-align: right;">15.3</td>
+<td style="text-align: right;">14.9</td>
+<td style="text-align: right;">9.17</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">5.49</td>
+<td style="text-align: right;">3.47</td>
+<td style="text-align: right;">3.818</td>
+<td style="text-align: right;">9.3</td>
+<td style="text-align: right;">9.082</td>
+<td style="text-align: right;">3.12</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">94.57</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">74.38</td>
+<td style="text-align: right;">20.5</td>
+<td style="text-align: right;">3.7</td>
+<td style="text-align: right;">9.59</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">8.78</td>
+<td style="text-align: right;">3.38</td>
+<td style="text-align: right;">4.828</td>
+<td style="text-align: right;">9.3</td>
+<td style="text-align: right;">9.644</td>
+<td style="text-align: right;">1.85</td>
+<td style="text-align: right;">34.5</td>
+<td style="text-align: right;">61.72</td>
+<td style="text-align: right;">0.18</td>
+<td style="text-align: right;">65.35</td>
+<td style="text-align: right;">14.4</td>
+<td style="text-align: right;">18.1</td>
+<td style="text-align: right;">7.97</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">7.47</td>
+<td style="text-align: right;">4.33</td>
+<td style="text-align: right;">5.077</td>
+<td style="text-align: right;">9.9</td>
+<td style="text-align: right;">9.792</td>
+<td style="text-align: right;">1.92</td>
+<td style="text-align: right;">1.0</td>
+<td style="text-align: right;">94.41</td>
+<td style="text-align: right;">0.75</td>
+<td style="text-align: right;">66.38</td>
+<td style="text-align: right;">25.5</td>
+<td style="text-align: right;">6.2</td>
+<td style="text-align: right;">9.72</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">6.28</td>
+<td style="text-align: right;">4.89</td>
+<td style="text-align: right;">6.076</td>
+<td style="text-align: right;">12.0</td>
+<td style="text-align: right;">10.564</td>
+<td style="text-align: right;">1.36</td>
+<td style="text-align: right;">9.0</td>
+<td style="text-align: right;">88.26</td>
+<td style="text-align: right;">0.02</td>
+<td style="text-align: right;">10.44</td>
+<td style="text-align: right;">45.2</td>
+<td style="text-align: right;">43.0</td>
+<td style="text-align: right;">10.09</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.07</td>
+<td style="text-align: right;">3.52</td>
+<td style="text-align: right;">4.168</td>
+<td style="text-align: right;">8.0</td>
+<td style="text-align: right;">8.689</td>
+<td style="text-align: right;">1.97</td>
+<td style="text-align: right;">42.5</td>
+<td style="text-align: right;">52.21</td>
+<td style="text-align: right;">1.35</td>
+<td style="text-align: right;">66.53</td>
+<td style="text-align: right;">22.2</td>
+<td style="text-align: right;">8.0</td>
+<td style="text-align: right;">10.14</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">5.90</td>
+<td style="text-align: right;">3.41</td>
+<td style="text-align: right;">4.598</td>
+<td style="text-align: right;">8.6</td>
+<td style="text-align: right;">8.801</td>
+<td style="text-align: right;">1.08</td>
+<td style="text-align: right;">14.2</td>
+<td style="text-align: right;">83.18</td>
+<td style="text-align: right;">0.46</td>
+<td style="text-align: right;">81.82</td>
+<td style="text-align: right;">5.3</td>
+<td style="text-align: right;">10.9</td>
+<td style="text-align: right;">8.30</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">1.71</td>
+<td style="text-align: right;">3.78</td>
+<td style="text-align: right;">4.404</td>
+<td style="text-align: right;">8.2</td>
+<td style="text-align: right;">9.051</td>
+<td style="text-align: right;">0.87</td>
+<td style="text-align: right;">7.1</td>
+<td style="text-align: right;">90.46</td>
+<td style="text-align: right;">0.70</td>
+<td style="text-align: right;">68.53</td>
+<td style="text-align: right;">26.3</td>
+<td style="text-align: right;">3.7</td>
+<td style="text-align: right;">11.12</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">1.58</td>
+<td style="text-align: right;">3.97</td>
+<td style="text-align: right;">4.400</td>
+<td style="text-align: right;">7.2</td>
+<td style="text-align: right;">9.114</td>
+<td style="text-align: right;">1.44</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">95.39</td>
+<td style="text-align: right;">1.73</td>
+<td style="text-align: right;">73.76</td>
+<td style="text-align: right;">22.1</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">11.13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">2.14</td>
+<td style="text-align: right;">3.86</td>
+<td style="text-align: right;">4.198</td>
+<td style="text-align: right;">8.3</td>
+<td style="text-align: right;">8.756</td>
+<td style="text-align: right;">1.69</td>
+<td style="text-align: right;">21.3</td>
+<td style="text-align: right;">74.10</td>
+<td style="text-align: right;">1.22</td>
+<td style="text-align: right;">60.01</td>
+<td style="text-align: right;">35.1</td>
+<td style="text-align: right;">1.5</td>
+<td style="text-align: right;">9.79</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.48</td>
+<td style="text-align: right;">4.22</td>
+<td style="text-align: right;">4.937</td>
+<td style="text-align: right;">10.2</td>
+<td style="text-align: right;">9.084</td>
+<td style="text-align: right;">52.21</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">47.21</td>
+<td style="text-align: right;">0.17</td>
+<td style="text-align: right;">28.99</td>
+<td style="text-align: right;">51.0</td>
+<td style="text-align: right;">19.1</td>
+<td style="text-align: right;">9.42</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">2.81</td>
+<td style="text-align: right;">3.74</td>
+<td style="text-align: right;">4.558</td>
+<td style="text-align: right;">9.6</td>
+<td style="text-align: right;">9.087</td>
+<td style="text-align: right;">0.79</td>
+<td style="text-align: right;">2.7</td>
+<td style="text-align: right;">95.21</td>
+<td style="text-align: right;">0.51</td>
+<td style="text-align: right;">73.51</td>
+<td style="text-align: right;">22.3</td>
+<td style="text-align: right;">3.4</td>
+<td style="text-align: right;">10.02</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">4.79</td>
+<td style="text-align: right;">3.82</td>
+<td style="text-align: right;">4.498</td>
+<td style="text-align: right;">6.7</td>
+<td style="text-align: right;">9.304</td>
+<td style="text-align: right;">0.25</td>
+<td style="text-align: right;">38.6</td>
+<td style="text-align: right;">59.69</td>
+<td style="text-align: right;">1.11</td>
+<td style="text-align: right;">82.25</td>
+<td style="text-align: right;">10.9</td>
+<td style="text-align: right;">6.6</td>
+<td style="text-align: right;">8.04</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">4.67</td>
+<td style="text-align: right;">3.30</td>
+<td style="text-align: right;">4.061</td>
+<td style="text-align: right;">8.2</td>
+<td style="text-align: right;">8.262</td>
+<td style="text-align: right;">0.09</td>
+<td style="text-align: right;">26.8</td>
+<td style="text-align: right;">72.08</td>
+<td style="text-align: right;">1.04</td>
+<td style="text-align: right;">84.21</td>
+<td style="text-align: right;">1.7</td>
+<td style="text-align: right;">11.1</td>
+<td style="text-align: right;">8.17</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">9.80</td>
+<td style="text-align: right;">5.35</td>
+<td style="text-align: right;">6.313</td>
+<td style="text-align: right;">12.1</td>
+<td style="text-align: right;">10.389</td>
+<td style="text-align: right;">0.40</td>
+<td style="text-align: right;">8.9</td>
+<td style="text-align: right;">89.72</td>
+<td style="text-align: right;">0.58</td>
+<td style="text-align: right;">51.20</td>
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">42.0</td>
+<td style="text-align: right;">10.86</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">6.52</td>
+<td style="text-align: right;">4.82</td>
+<td style="text-align: right;">6.152</td>
+<td style="text-align: right;">13.9</td>
+<td style="text-align: right;">10.409</td>
+<td style="text-align: right;">1.71</td>
+<td style="text-align: right;">11.4</td>
+<td style="text-align: right;">85.11</td>
+<td style="text-align: right;">0.07</td>
+<td style="text-align: right;">17.29</td>
+<td style="text-align: right;">35.0</td>
+<td style="text-align: right;">46.0</td>
+<td style="text-align: right;">8.45</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.58</td>
+<td style="text-align: right;">3.38</td>
+<td style="text-align: right;">4.109</td>
+<td style="text-align: right;">8.5</td>
+<td style="text-align: right;">8.921</td>
+<td style="text-align: right;">3.85</td>
+<td style="text-align: right;">13.5</td>
+<td style="text-align: right;">81.11</td>
+<td style="text-align: right;">0.89</td>
+<td style="text-align: right;">59.25</td>
+<td style="text-align: right;">35.2</td>
+<td style="text-align: right;">3.7</td>
+<td style="text-align: right;">10.93</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">13.29</td>
+<td style="text-align: right;">3.61</td>
+<td style="text-align: right;">5.007</td>
+<td style="text-align: right;">8.3</td>
+<td style="text-align: right;">10.376</td>
+<td style="text-align: right;">1.70</td>
+<td style="text-align: right;">62.0</td>
+<td style="text-align: right;">26.21</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">38.00</td>
+<td style="text-align: right;">33.5</td>
+<td style="text-align: right;">25.7</td>
+<td style="text-align: right;">8.65</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">2.97</td>
+<td style="text-align: right;">3.68</td>
+<td style="text-align: right;">4.240</td>
+<td style="text-align: right;">8.0</td>
+<td style="text-align: right;">8.770</td>
+<td style="text-align: right;">5.73</td>
+<td style="text-align: right;">56.3</td>
+<td style="text-align: right;">35.26</td>
+<td style="text-align: right;">1.18</td>
+<td style="text-align: right;">47.47</td>
+<td style="text-align: right;">44.2</td>
+<td style="text-align: right;">5.7</td>
+<td style="text-align: right;">10.47</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">6.91</td>
+<td style="text-align: right;">3.71</td>
+<td style="text-align: right;">5.162</td>
+<td style="text-align: right;">10.8</td>
+<td style="text-align: right;">9.281</td>
+<td style="text-align: right;">83.95</td>
+<td style="text-align: right;">0.0</td>
+<td style="text-align: right;">12.43</td>
+<td style="text-align: right;">1.77</td>
+<td style="text-align: right;">21.45</td>
+<td style="text-align: right;">51.6</td>
+<td style="text-align: right;">25.1</td>
+<td style="text-align: right;">9.36</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2e+05</td>
+<td style="text-align: right;">3.15</td>
+<td style="text-align: right;">3.26</td>
+<td style="text-align: right;">3.718</td>
+<td style="text-align: right;">9.0</td>
+<td style="text-align: right;">8.686</td>
+<td style="text-align: right;">9.77</td>
+<td style="text-align: right;">28.8</td>
+<td style="text-align: right;">59.62</td>
+<td style="text-align: right;">1.64</td>
+<td style="text-align: right;">78.73</td>
+<td style="text-align: right;">14.6</td>
+<td style="text-align: right;">6.5</td>
+<td style="text-align: right;">10.96</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<hr>
+</section>
+<section id="multiple-regression-model" class="level1">
+<h1>Multiple Regression Model</h1>
+<section id="model-fitting" class="level2">
+<h2 class="anchored" data-anchor-id="model-fitting">Model Fitting</h2>
+<p>All catchment variables (excluding <code>DBMSNR</code>) are used as predictors.</p>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>lm_full <span class="ot">&lt;-</span> <span class="fu">lm</span>(Q95 <span class="sc">~</span> H.MIN <span class="sc">+</span> H.MEAN <span class="sc">+</span> M.NEIG <span class="sc">+</span> N.GES <span class="sc">+</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                GEOL.BM <span class="sc">+</span> GEOL.QUA2 <span class="sc">+</span> GEOL.TER <span class="sc">+</span> GEOL.QUELL <span class="sc">+</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                BONU.ACK <span class="sc">+</span> BONU.GRU <span class="sc">+</span> BONU.WAL <span class="sc">+</span> SDENS,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>              <span class="at">data =</span> q95)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(lm_full)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = Q95 ~ H.MIN + H.MEAN + M.NEIG + N.GES + GEOL.BM + 
+    GEOL.QUA2 + GEOL.TER + GEOL.QUELL + BONU.ACK + BONU.GRU + 
+    BONU.WAL + SDENS, data = q95)
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-2.410 -0.982  0.222  0.822  2.576 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)  
+(Intercept)   72.318     35.622    2.03    0.054 .
+H.MIN         -0.193      1.203   -0.16    0.874  
+H.MEAN         0.164      1.463    0.11    0.912  
+M.NEIG         0.622      0.308    2.02    0.055 .
+N.GES          2.247      1.070    2.10    0.047 *
+GEOL.BM       -0.618      0.252   -2.46    0.022 *
+GEOL.QUA2     -0.630      0.250   -2.51    0.019 *
+GEOL.TER      -0.659      0.249   -2.64    0.015 *
+GEOL.QUELL    -0.648      0.244   -2.65    0.014 *
+BONU.ACK      -0.229      0.321   -0.71    0.482  
+BONU.GRU      -0.330      0.326   -1.01    0.323  
+BONU.WAL      -0.294      0.317   -0.93    0.364  
+SDENS         -0.408      0.296   -1.38    0.181  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.5 on 23 degrees of freedom
+Multiple R-squared:  0.745, Adjusted R-squared:  0.612 
+F-statistic:  5.6 on 12 and 23 DF,  p-value: 0.000207</code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>coef_summary <span class="ot">&lt;-</span> <span class="fu">coef</span>(<span class="fu">summary</span>(lm_full))</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Regression coefficient of SDENS</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>sdens_coef <span class="ot">&lt;-</span> coef_summary[<span class="st">"SDENS"</span>, <span class="st">"Estimate"</span>]</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Regression coefficient of SDENS:"</span>, <span class="fu">round</span>(sdens_coef, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Regression coefficient of SDENS: -0.4082 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># t-statistic of M.NEIG</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>mneig_t <span class="ot">&lt;-</span> coef_summary[<span class="st">"M.NEIG"</span>, <span class="st">"t value"</span>]</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"t-statistic of M.NEIG:"</span>, <span class="fu">round</span>(mneig_t, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>t-statistic of M.NEIG: 2.018 </code></pre>
+</div>
+</div>
+</section>
+<section id="goodness-of-fit" class="level2">
+<h2 class="anchored" data-anchor-id="goodness-of-fit">Goodness of Fit</h2>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fu">summary</span>(lm_full)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"R²                  :"</span>, <span class="fu">round</span>(s<span class="sc">$</span>r.squared,   <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R²                  : 0.7449 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Adjusted R²         :"</span>, <span class="fu">round</span>(s<span class="sc">$</span>adj.r.squared, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Adjusted R²         : 0.6118 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Residual Std. Error :"</span>, <span class="fu">round</span>(s<span class="sc">$</span>sigma, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Residual Std. Error : 1.5 </code></pre>
+</div>
+</div>
+</section>
+<section id="model-diagnostics" class="level2">
+<h2 class="anchored" data-anchor-id="model-diagnostics">Model Diagnostics</h2>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(lm_full)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Regression_files/figure-html/lm-diagnostics-1.png" class="img-fluid figure-img" width="672"></p>
+<figcaption>Standard diagnostic plots for the full linear regression model.</figcaption>
+</figure>
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfrow =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cook's distances</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>cook_d <span class="ot">&lt;-</span> <span class="fu">cooks.distance</span>(lm_full)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Row number with the largest Cook's distance (strongest leverage effect)</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>max_cook_row <span class="ot">&lt;-</span> <span class="fu">which.max</span>(cook_d)</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Row with largest Cook's distance:"</span>, max_cook_row,</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">" (Cook's D ="</span>, <span class="fu">round</span>(cook_d[max_cook_row], <span class="dv">4</span>), <span class="st">")</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Row with largest Cook's distance: 3  (Cook's D = 1.146 )</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot Cook's distances</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(cook_d, <span class="at">type =</span> <span class="st">"h"</span>,</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">main =</span> <span class="st">"Cook's Distance — Full Linear Model"</span>,</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab =</span> <span class="st">"Observation index"</span>,</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">ylab =</span> <span class="st">"Cook's distance"</span>)</span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h =</span> <span class="fl">0.5</span>, <span class="at">col =</span> <span class="st">"red"</span>, <span class="at">lty =</span> <span class="dv">2</span>)</span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a><span class="fu">text</span>(max_cook_row, cook_d[max_cook_row],</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>     <span class="at">labels =</span> max_cook_row, <span class="at">pos =</span> <span class="dv">4</span>, <span class="at">col =</span> <span class="st">"red"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="Regression_files/figure-html/cook-leverage-1.png" class="img-fluid quarto-figure quarto-figure-center figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Observation with the largest (absolute) residual</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>resids    <span class="ot">&lt;-</span> <span class="fu">residuals</span>(lm_full)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>max_res_row <span class="ot">&lt;-</span> <span class="fu">which.max</span>(<span class="fu">abs</span>(resids))</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Row with largest residual      :"</span>, max_res_row, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Row with largest residual      : 30 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Q95 value at that point        :"</span>, q95<span class="sc">$</span>Q95[max_res_row], <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Q95 value at that point        : 9.8 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Residual value                 :"</span>, <span class="fu">round</span>(resids[max_res_row], <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Residual value                 : 2.576 </code></pre>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="robust-regression" class="level1">
+<h1>Robust Regression</h1>
+<p>The robust estimator <code>ltsReg</code> (Least Trimmed Squares) from the <code>robustbase</code> package is used to down-weight the influence of outliers.</p>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(robustbase)</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">3141</span>)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>lts_fit <span class="ot">&lt;-</span> <span class="fu">ltsReg</span>(Q95 <span class="sc">~</span> H.MIN <span class="sc">+</span> H.MEAN <span class="sc">+</span> M.NEIG <span class="sc">+</span> N.GES <span class="sc">+</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>                    GEOL.BM <span class="sc">+</span> GEOL.QUA2 <span class="sc">+</span> GEOL.TER <span class="sc">+</span> GEOL.QUELL <span class="sc">+</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>                    BONU.ACK <span class="sc">+</span> BONU.GRU <span class="sc">+</span> BONU.WAL <span class="sc">+</span> SDENS,</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>                  <span class="at">data =</span> q95)</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(lts_fit)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+ltsReg.formula(formula = Q95 ~ H.MIN + H.MEAN + M.NEIG + N.GES + 
+    GEOL.BM + GEOL.QUA2 + GEOL.TER + GEOL.QUELL + BONU.ACK + 
+    BONU.GRU + BONU.WAL + SDENS, data = q95)
+
+Residuals (from reweighted LS):
+    Min      1Q  Median      3Q     Max 
+-2.0414 -0.6540  0.0216  0.5944  3.0668 
+
+Coefficients:
+           Estimate Std. Error t value Pr(&gt;|t|)   
+Intercept    41.908     30.811    1.36   0.1882   
+H.MIN        -2.192      1.152   -1.90   0.0708 . 
+H.MEAN       -0.402      1.292   -0.31   0.7588   
+M.NEIG        0.230      0.284    0.81   0.4269   
+N.GES         2.862      0.933    3.07   0.0059 **
+GEOL.BM      -0.170      0.219   -0.78   0.4467   
+GEOL.QUA2    -0.182      0.218   -0.84   0.4114   
+GEOL.TER     -0.183      0.218   -0.84   0.4128   
+GEOL.QUELL   -0.238      0.211   -1.12   0.2736   
+BONU.ACK     -0.315      0.277   -1.13   0.2693   
+BONU.GRU     -0.334      0.280   -1.19   0.2461   
+BONU.WAL     -0.304      0.274   -1.11   0.2787   
+SDENS        -0.666      0.274   -2.43   0.0242 * 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.27 on 21 degrees of freedom
+Multiple R-Squared: 0.743,  Adjusted R-squared: 0.597 
+F-statistic: 5.07 on 12 and 21 DF,  p-value: 0.000607 </code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>lts_sum <span class="ot">&lt;-</span> <span class="fu">summary</span>(lts_fit)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Coefficient table</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>lts_coefs <span class="ot">&lt;-</span> lts_sum<span class="sc">$</span>coefficients</span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Variable with the smallest p-value (excluding intercept)</span></span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a>p_vals <span class="ot">&lt;-</span> lts_coefs[<span class="sc">-</span><span class="dv">1</span>, <span class="st">"Pr(&gt;|t|)"</span>]</span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a>min_p_var <span class="ot">&lt;-</span> <span class="fu">names</span>(<span class="fu">which.min</span>(p_vals))</span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Variable with smallest p-value:"</span>, min_p_var,</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">" (p ="</span>, <span class="fu">formatC</span>(<span class="fu">min</span>(p_vals), <span class="at">format =</span> <span class="st">"e"</span>, <span class="at">digits =</span> <span class="dv">3</span>), <span class="st">")</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Variable with smallest p-value: N.GES  (p = 5.855e-03 )</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># R² from robust fit</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"R² (robust):"</span>, <span class="fu">round</span>(lts_sum<span class="sc">$</span>r.squared, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>R² (robust): 0.7433 </code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="stepwise-regression" class="level1">
+<h1>Stepwise Regression</h1>
+<p>Starting with the single most important variable from the full OLS model (lowest p-value), a bidirectional stepwise algorithm is applied.</p>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Identify the single most important predictor in the full OLS model</span></span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>ols_pvals <span class="ot">&lt;-</span> coef_summary[<span class="sc">-</span><span class="dv">1</span>, <span class="st">"Pr(&gt;|t|)"</span>]   <span class="co"># drop intercept row</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>best_var   <span class="ot">&lt;-</span> <span class="fu">names</span>(<span class="fu">which.min</span>(ols_pvals))</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Most important predictor in full OLS model:"</span>, best_var, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Most important predictor in full OLS model: GEOL.QUELL </code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Initial model with only the best single predictor</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>formula_start <span class="ot">&lt;-</span> <span class="fu">as.formula</span>(<span class="fu">paste</span>(<span class="st">"Q95 ~"</span>, best_var))</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>lm_start <span class="ot">&lt;-</span> <span class="fu">lm</span>(formula_start, <span class="at">data =</span> q95)</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-5"><a href="#cb37-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Full scope for stepwise search</span></span>
+<span id="cb37-6"><a href="#cb37-6" aria-hidden="true" tabindex="-1"></a>lm_upper <span class="ot">&lt;-</span> <span class="fu">lm</span>(Q95 <span class="sc">~</span> H.MIN <span class="sc">+</span> H.MEAN <span class="sc">+</span> M.NEIG <span class="sc">+</span> N.GES <span class="sc">+</span></span>
+<span id="cb37-7"><a href="#cb37-7" aria-hidden="true" tabindex="-1"></a>                 GEOL.BM <span class="sc">+</span> GEOL.QUA2 <span class="sc">+</span> GEOL.TER <span class="sc">+</span> GEOL.QUELL <span class="sc">+</span></span>
+<span id="cb37-8"><a href="#cb37-8" aria-hidden="true" tabindex="-1"></a>                 BONU.ACK <span class="sc">+</span> BONU.GRU <span class="sc">+</span> BONU.WAL <span class="sc">+</span> SDENS,</span>
+<span id="cb37-9"><a href="#cb37-9" aria-hidden="true" tabindex="-1"></a>               <span class="at">data =</span> q95)</span>
+<span id="cb37-10"><a href="#cb37-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb37-11"><a href="#cb37-11" aria-hidden="true" tabindex="-1"></a>step_model <span class="ot">&lt;-</span> <span class="fu">step</span>(lm_start,</span>
+<span id="cb37-12"><a href="#cb37-12" aria-hidden="true" tabindex="-1"></a>                   <span class="at">scope =</span> <span class="fu">list</span>(<span class="at">lower =</span> <span class="sc">~</span><span class="dv">1</span>, <span class="at">upper =</span> <span class="fu">formula</span>(lm_upper)),</span>
+<span id="cb37-13"><a href="#cb37-13" aria-hidden="true" tabindex="-1"></a>                   <span class="at">direction =</span> <span class="st">"both"</span>,</span>
+<span id="cb37-14"><a href="#cb37-14" aria-hidden="true" tabindex="-1"></a>                   <span class="at">trace =</span> <span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Start:  AIC=65.55
+Q95 ~ GEOL.QUELL
+
+             Df Sum of Sq RSS  AIC
++ N.GES       1      63.1 136 53.8
++ H.MEAN      1      33.8 165 60.8
++ BONU.WAL    1      21.5 178 63.4
++ M.NEIG      1      18.8 180 64.0
+- GEOL.QUELL  1       3.9 203 64.2
+&lt;none&gt;                    199 65.5
++ BONU.ACK    1      10.7 188 65.6
++ SDENS       1       9.2 190 65.8
++ H.MIN       1       8.5 190 66.0
++ GEOL.QUA2   1       3.6 195 66.9
++ GEOL.TER    1       3.4 196 66.9
++ BONU.GRU    1       1.0 198 67.4
++ GEOL.BM     1       0.1 199 67.5
+
+Step:  AIC=53.81
+Q95 ~ GEOL.QUELL + N.GES
+
+             Df Sum of Sq   RSS  AIC
++ H.MIN       1      37.6  98.2 44.1
++ SDENS       1      15.6 120.2 51.4
++ GEOL.TER    1      11.0 124.9 52.8
++ BONU.ACK    1       8.7 127.1 53.4
++ GEOL.QUA2   1       8.2 127.6 53.6
++ H.MEAN      1       7.8 128.0 53.7
+&lt;none&gt;                    135.8 53.8
++ BONU.GRU    1       6.6 129.3 54.0
+- GEOL.QUELL  1       9.0 144.9 54.1
++ M.NEIG      1       3.1 132.8 55.0
++ BONU.WAL    1       0.9 134.9 55.6
++ GEOL.BM     1       0.3 135.5 55.7
+- N.GES       1      63.1 199.0 65.5
+
+Step:  AIC=44.13
+Q95 ~ GEOL.QUELL + N.GES + H.MIN
+
+             Df Sum of Sq   RSS  AIC
++ SDENS       1      10.1  88.1 42.2
++ BONU.GRU    1       9.7  88.5 42.4
+- GEOL.QUELL  1       1.3  99.5 42.6
++ BONU.WAL    1       5.4  92.8 44.1
+&lt;none&gt;                     98.2 44.1
++ H.MEAN      1       4.0  94.2 44.6
++ BONU.ACK    1       1.2  97.1 45.7
++ GEOL.TER    1       1.0  97.2 45.7
++ GEOL.BM     1       0.2  98.0 46.0
++ GEOL.QUA2   1       0.2  98.0 46.0
++ M.NEIG      1       0.1  98.1 46.1
+- H.MIN       1      37.6 135.8 53.8
+- N.GES       1      92.3 190.5 66.0
+
+Step:  AIC=42.2
+Q95 ~ GEOL.QUELL + N.GES + H.MIN + SDENS
+
+             Df Sum of Sq   RSS  AIC
+- GEOL.QUELL  1       0.8  88.9 40.5
+&lt;none&gt;                     88.1 42.2
++ BONU.GRU    1       4.3  83.8 42.4
++ BONU.WAL    1       1.8  86.3 43.5
++ H.MEAN      1       1.4  86.7 43.6
++ M.NEIG      1       1.1  87.0 43.8
++ GEOL.TER    1       0.7  87.4 43.9
++ BONU.ACK    1       0.6  87.5 44.0
++ GEOL.BM     1       0.5  87.6 44.0
+- SDENS       1      10.1  98.2 44.1
++ GEOL.QUA2   1       0.0  88.1 44.2
+- H.MIN       1      32.2 120.2 51.4
+- N.GES       1      89.7 177.8 65.5
+
+Step:  AIC=40.53
+Q95 ~ N.GES + H.MIN + SDENS
+
+             Df Sum of Sq   RSS  AIC
+&lt;none&gt;                     88.9 40.5
++ BONU.GRU    1       3.7  85.2 41.0
++ BONU.WAL    1       2.3  86.6 41.6
++ H.MEAN      1       1.9  87.0 41.7
++ M.NEIG      1       1.9  87.0 41.8
++ GEOL.QUELL  1       0.8  88.1 42.2
++ GEOL.BM     1       0.6  88.3 42.3
++ BONU.ACK    1       0.2  88.7 42.4
++ GEOL.QUA2   1       0.2  88.7 42.4
++ GEOL.TER    1       0.0  88.8 42.5
+- SDENS       1      10.6  99.5 42.6
+- H.MIN       1      31.4 120.2 49.4
+- N.GES       1      88.9 177.8 63.5</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(step_model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = Q95 ~ N.GES + H.MIN + SDENS, data = q95)
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-3.664 -0.982 -0.225  0.835  4.776 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  -16.546      4.642   -3.56   0.0012 ** 
+N.GES          3.703      0.654    5.66  2.9e-06 ***
+H.MIN         -2.303      0.685   -3.36   0.0020 ** 
+SDENS         -0.422      0.216   -1.95   0.0595 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.67 on 32 degrees of freedom
+Multiple R-squared:  0.562, Adjusted R-squared:  0.521 
+F-statistic: 13.7 on 3 and 32 DF,  p-value: 6.52e-06</code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>step_vars <span class="ot">&lt;-</span> <span class="fu">names</span>(<span class="fu">coef</span>(step_model))[<span class="sc">-</span><span class="dv">1</span>]   <span class="co"># drop intercept</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Number of independent variables chosen:"</span>, <span class="fu">length</span>(step_vars), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Number of independent variables chosen: 3 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Variables in stepwise model:"</span>, <span class="fu">paste</span>(step_vars, <span class="at">collapse =</span> <span class="st">", "</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Variables in stepwise model: N.GES, H.MIN, SDENS </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Adjusted R²:"</span>, <span class="fu">round</span>(<span class="fu">summary</span>(step_model)<span class="sc">$</span>adj.r.squared, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Adjusted R²: 0.5208 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"First variable entered (start of stepwise):"</span>, best_var, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>First variable entered (start of stepwise): GEOL.QUELL </code></pre>
+</div>
+</div>
+<hr>
+</section>
+<section id="modelling-without-leverage-points" class="level1">
+<h1>Modelling Without Leverage Points</h1>
+<section id="remove-high-leverage-observations" class="level2">
+<h2 class="anchored" data-anchor-id="remove-high-leverage-observations">Remove High-Leverage Observations</h2>
+<p>Observations with Cook’s distance greater than 0.5 are excluded.</p>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>leverage_threshold <span class="ot">&lt;-</span> <span class="fl">0.5</span></span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a>high_lev_rows <span class="ot">&lt;-</span> <span class="fu">which</span>(cook_d <span class="sc">&gt;</span> leverage_threshold)</span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Rows removed (Cook's D &gt; 0.5):"</span>, high_lev_rows, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows removed (Cook's D &gt; 0.5): 3 30 33 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Cook's distances of removed rows:</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cook's distances of removed rows:</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">round</span>(cook_d[high_lev_rows], <span class="dv">4</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     3     30     33 
+1.1464 0.5129 0.9495 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a>q95_reduced <span class="ot">&lt;-</span> q95[<span class="sc">-</span>high_lev_rows, ]</span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Remaining observations:"</span>, <span class="fu">nrow</span>(q95_reduced), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Remaining observations: 33 </code></pre>
+</div>
+</div>
+</section>
+<section id="full-linear-model-on-reduced-dataset" class="level2">
+<h2 class="anchored" data-anchor-id="full-linear-model-on-reduced-dataset">Full Linear Model on Reduced Dataset</h2>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>lm_reduced <span class="ot">&lt;-</span> <span class="fu">lm</span>(Q95 <span class="sc">~</span> H.MIN <span class="sc">+</span> H.MEAN <span class="sc">+</span> M.NEIG <span class="sc">+</span> N.GES <span class="sc">+</span></span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a>                   GEOL.BM <span class="sc">+</span> GEOL.QUA2 <span class="sc">+</span> GEOL.TER <span class="sc">+</span> GEOL.QUELL <span class="sc">+</span></span>
+<span id="cb57-3"><a href="#cb57-3" aria-hidden="true" tabindex="-1"></a>                   BONU.ACK <span class="sc">+</span> BONU.GRU <span class="sc">+</span> BONU.WAL <span class="sc">+</span> SDENS,</span>
+<span id="cb57-4"><a href="#cb57-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">data =</span> q95_reduced)</span>
+<span id="cb57-5"><a href="#cb57-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb57-6"><a href="#cb57-6" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(lm_reduced)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = Q95 ~ H.MIN + H.MEAN + M.NEIG + N.GES + GEOL.BM + 
+    GEOL.QUA2 + GEOL.TER + GEOL.QUELL + BONU.ACK + BONU.GRU + 
+    BONU.WAL + SDENS, data = q95_reduced)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-1.8844 -0.6704 -0.0531  0.6482  2.2884 
+
+Coefficients:
+             Estimate Std. Error t value Pr(&gt;|t|)   
+(Intercept) 42.145371  35.333361    1.19   0.2469   
+H.MIN       -0.586564   1.036934   -0.57   0.5779   
+H.MEAN      -0.949852   1.262467   -0.75   0.4606   
+M.NEIG       0.439780   0.253693    1.73   0.0984 . 
+N.GES        2.539914   0.890633    2.85   0.0099 **
+GEOL.BM     -0.021328   0.304062   -0.07   0.9448   
+GEOL.QUA2   -0.043941   0.302321   -0.15   0.8859   
+GEOL.TER    -0.053676   0.303637   -0.18   0.8615   
+GEOL.QUELL   0.000396   0.313055    0.00   0.9990   
+BONU.ACK    -0.483867   0.264128   -1.83   0.0819 . 
+BONU.GRU    -0.550006   0.268663   -2.05   0.0540 . 
+BONU.WAL    -0.467474   0.255419   -1.83   0.0822 . 
+SDENS       -0.476495   0.276912   -1.72   0.1007   
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.19 on 20 degrees of freedom
+Multiple R-squared:  0.722, Adjusted R-squared:  0.555 
+F-statistic: 4.33 on 12 and 20 DF,  p-value: 0.00194</code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>coef_reduced <span class="ot">&lt;-</span> <span class="fu">coef</span>(<span class="fu">summary</span>(lm_reduced))</span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>p_vals_reduced <span class="ot">&lt;-</span> coef_reduced[<span class="sc">-</span><span class="dv">1</span>, <span class="st">"Pr(&gt;|t|)"</span>]</span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>min_p_var_red  <span class="ot">&lt;-</span> <span class="fu">names</span>(<span class="fu">which.min</span>(p_vals_reduced))</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb59-5"><a href="#cb59-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Variable with smallest p-value (reduced model):"</span>, min_p_var_red,</span>
+<span id="cb59-6"><a href="#cb59-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">" (p ="</span>, <span class="fu">formatC</span>(<span class="fu">min</span>(p_vals_reduced), <span class="at">format =</span> <span class="st">"e"</span>, <span class="at">digits =</span> <span class="dv">3</span>), <span class="st">")</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Variable with smallest p-value (reduced model): N.GES  (p = 9.857e-03 )</code></pre>
+</div>
+</div>
+</section>
+<section id="stepwise-regression-on-reduced-dataset" class="level2">
+<h2 class="anchored" data-anchor-id="stepwise-regression-on-reduced-dataset">Stepwise Regression on Reduced Dataset</h2>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb61"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Most important predictor in the reduced OLS model</span></span>
+<span id="cb61-2"><a href="#cb61-2" aria-hidden="true" tabindex="-1"></a>best_var_red <span class="ot">&lt;-</span> <span class="fu">names</span>(<span class="fu">which.min</span>(p_vals_reduced))</span>
+<span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Most important predictor (reduced dataset):"</span>, best_var_red, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Most important predictor (reduced dataset): N.GES </code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb63"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a>formula_start_red <span class="ot">&lt;-</span> <span class="fu">as.formula</span>(<span class="fu">paste</span>(<span class="st">"Q95 ~"</span>, best_var_red))</span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a>lm_start_red <span class="ot">&lt;-</span> <span class="fu">lm</span>(formula_start_red, <span class="at">data =</span> q95_reduced)</span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb63-4"><a href="#cb63-4" aria-hidden="true" tabindex="-1"></a>lm_upper_red <span class="ot">&lt;-</span> <span class="fu">lm</span>(Q95 <span class="sc">~</span> H.MIN <span class="sc">+</span> H.MEAN <span class="sc">+</span> M.NEIG <span class="sc">+</span> N.GES <span class="sc">+</span></span>
+<span id="cb63-5"><a href="#cb63-5" aria-hidden="true" tabindex="-1"></a>                     GEOL.BM <span class="sc">+</span> GEOL.QUA2 <span class="sc">+</span> GEOL.TER <span class="sc">+</span> GEOL.QUELL <span class="sc">+</span></span>
+<span id="cb63-6"><a href="#cb63-6" aria-hidden="true" tabindex="-1"></a>                     BONU.ACK <span class="sc">+</span> BONU.GRU <span class="sc">+</span> BONU.WAL <span class="sc">+</span> SDENS,</span>
+<span id="cb63-7"><a href="#cb63-7" aria-hidden="true" tabindex="-1"></a>                   <span class="at">data =</span> q95_reduced)</span>
+<span id="cb63-8"><a href="#cb63-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb63-9"><a href="#cb63-9" aria-hidden="true" tabindex="-1"></a>step_model_red <span class="ot">&lt;-</span> <span class="fu">step</span>(lm_start_red,</span>
+<span id="cb63-10"><a href="#cb63-10" aria-hidden="true" tabindex="-1"></a>                       <span class="at">scope =</span> <span class="fu">list</span>(<span class="at">lower =</span> <span class="sc">~</span><span class="dv">1</span>, <span class="at">upper =</span> <span class="fu">formula</span>(lm_upper_red)),</span>
+<span id="cb63-11"><a href="#cb63-11" aria-hidden="true" tabindex="-1"></a>                       <span class="at">direction =</span> <span class="st">"both"</span>,</span>
+<span id="cb63-12"><a href="#cb63-12" aria-hidden="true" tabindex="-1"></a>                       <span class="at">trace =</span> <span class="dv">1</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Start:  AIC=33.88
+Q95 ~ N.GES
+
+             Df Sum of Sq   RSS  AIC
++ SDENS       1     27.25  54.4 22.5
++ H.MIN       1     20.50  61.1 26.3
++ BONU.GRU    1     16.47  65.1 28.4
++ GEOL.QUELL  1     10.85  70.8 31.2
++ BONU.ACK    1      8.48  73.1 32.3
++ GEOL.TER    1      8.19  73.4 32.4
+&lt;none&gt;                     81.6 33.9
++ GEOL.QUA2   1      4.51  77.1 34.0
++ M.NEIG      1      4.12  77.5 34.2
++ H.MEAN      1      1.14  80.5 35.4
++ BONU.WAL    1      0.38  81.2 35.7
++ GEOL.BM     1      0.25  81.4 35.8
+- N.GES       1     20.04 101.6 39.1
+
+Step:  AIC=22.47
+Q95 ~ N.GES + SDENS
+
+             Df Sum of Sq  RSS  AIC
++ H.MIN       1      9.63 44.7 18.0
+&lt;none&gt;                    54.4 22.5
++ M.NEIG      1      1.82 52.5 23.3
++ BONU.GRU    1      1.60 52.8 23.5
++ GEOL.BM     1      1.43 52.9 23.6
++ GEOL.QUA2   1      0.42 53.9 24.2
++ BONU.ACK    1      0.30 54.1 24.3
++ H.MEAN      1      0.27 54.1 24.3
++ BONU.WAL    1      0.20 54.2 24.3
++ GEOL.TER    1      0.20 54.2 24.3
++ GEOL.QUELL  1      0.01 54.3 24.5
+- SDENS       1     27.25 81.6 33.9
+- N.GES       1     27.99 82.3 34.2
+
+Step:  AIC=18.03
+Q95 ~ N.GES + SDENS + H.MIN
+
+             Df Sum of Sq  RSS  AIC
++ M.NEIG      1      4.41 40.3 16.6
++ GEOL.QUA2   1      2.94 41.8 17.8
++ BONU.WAL    1      2.77 42.0 17.9
+&lt;none&gt;                    44.7 18.0
++ H.MEAN      1      2.15 42.6 18.4
++ GEOL.BM     1      1.48 43.2 18.9
++ GEOL.QUELL  1      0.53 44.2 19.6
++ BONU.ACK    1      0.39 44.3 19.7
++ BONU.GRU    1      0.32 44.4 19.8
++ GEOL.TER    1      0.30 44.4 19.8
+- H.MIN       1      9.63 54.4 22.5
+- SDENS       1     16.38 61.1 26.3
+- N.GES       1     31.21 75.9 33.5
+
+Step:  AIC=16.6
+Q95 ~ N.GES + SDENS + H.MIN + M.NEIG
+
+             Df Sum of Sq  RSS  AIC
++ BONU.GRU    1      2.46 37.8 16.5
+&lt;none&gt;                    40.3 16.6
++ BONU.ACK    1      0.93 39.4 17.8
++ GEOL.QUA2   1      0.71 39.6 18.0
+- M.NEIG      1      4.41 44.7 18.0
++ GEOL.QUELL  1      0.66 39.7 18.1
++ BONU.WAL    1      0.34 40.0 18.3
++ GEOL.BM     1      0.15 40.2 18.5
++ H.MEAN      1      0.08 40.2 18.5
++ GEOL.TER    1      0.03 40.3 18.6
+- H.MIN       1     12.23 52.5 23.4
+- SDENS       1     20.58 60.9 28.2
+- N.GES       1     25.20 65.5 30.6
+
+Step:  AIC=16.52
+Q95 ~ N.GES + SDENS + H.MIN + M.NEIG + BONU.GRU
+
+             Df Sum of Sq  RSS  AIC
++ GEOL.BM     1      2.96 34.9 15.8
++ GEOL.TER    1      2.41 35.4 16.4
+&lt;none&gt;                    37.8 16.5
+- BONU.GRU    1      2.46 40.3 16.6
++ GEOL.QUELL  1      1.68 36.2 17.0
++ BONU.ACK    1      0.23 37.6 18.3
++ H.MEAN      1      0.12 37.7 18.4
++ BONU.WAL    1      0.09 37.8 18.4
++ GEOL.QUA2   1      0.08 37.8 18.4
+- M.NEIG      1      6.55 44.4 19.8
+- H.MIN       1     10.40 48.2 22.5
+- SDENS       1     14.62 52.5 25.3
+- N.GES       1     24.72 62.6 31.1
+
+Step:  AIC=15.84
+Q95 ~ N.GES + SDENS + H.MIN + M.NEIG + BONU.GRU + GEOL.BM
+
+             Df Sum of Sq  RSS  AIC
+&lt;none&gt;                    34.9 15.8
+- GEOL.BM     1      2.96 37.8 16.5
++ GEOL.QUELL  1      1.16 33.7 16.7
++ GEOL.TER    1      1.14 33.8 16.7
++ GEOL.QUA2   1      0.76 34.1 17.1
++ BONU.ACK    1      0.25 34.6 17.6
++ BONU.WAL    1      0.08 34.8 17.8
++ H.MEAN      1      0.00 34.9 17.8
+- M.NEIG      1      4.73 39.6 18.0
+- BONU.GRU    1      5.27 40.2 18.5
+- H.MIN       1      7.56 42.5 20.3
+- SDENS       1      8.45 43.3 21.0
+- N.GES       1     26.75 61.6 32.6</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb65"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(step_model_red)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = Q95 ~ N.GES + SDENS + H.MIN + M.NEIG + BONU.GRU + 
+    GEOL.BM, data = q95_reduced)
+
+Residuals:
+   Min     1Q Median     3Q    Max 
+-2.330 -0.635 -0.101  0.623  2.324 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  -9.2330     4.3308   -2.13  0.04263 *  
+N.GES         2.5336     0.5675    4.46  0.00014 ***
+SDENS        -0.5293     0.2110   -2.51  0.01868 *  
+H.MIN        -1.5725     0.6624   -2.37  0.02526 *  
+M.NEIG        0.2725     0.1451    1.88  0.07166 .  
+BONU.GRU     -0.0475     0.0240   -1.98  0.05822 .  
+GEOL.BM       0.0204     0.0138    1.48  0.14973    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 1.16 on 26 degrees of freedom
+Multiple R-squared:  0.657, Adjusted R-squared:  0.578 
+F-statistic: 8.29 on 6 and 26 DF,  p-value: 4.48e-05</code></pre>
+</div>
+</div>
+<div class="cell" data-layout-align="center">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a>step_vars_red <span class="ot">&lt;-</span> <span class="fu">names</span>(<span class="fu">coef</span>(step_model_red))[<span class="sc">-</span><span class="dv">1</span>]</span>
+<span id="cb67-2"><a href="#cb67-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb67-3"><a href="#cb67-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Variables in stepwise model (reduced):"</span>, <span class="fu">paste</span>(step_vars_red, <span class="at">collapse =</span> <span class="st">", "</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Variables in stepwise model (reduced): N.GES, SDENS, H.MIN, M.NEIG, BONU.GRU, GEOL.BM </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Adjusted R² (reduced stepwise):"</span>, <span class="fu">round</span>(<span class="fu">summary</span>(step_model_red)<span class="sc">$</span>adj.r.squared, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Adjusted R² (reduced stepwise): 0.5775 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb71"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="co"># How many regressors overlap with the original stepwise model (section 3)?</span></span>
+<span id="cb71-2"><a href="#cb71-2" aria-hidden="true" tabindex="-1"></a>common_vars <span class="ot">&lt;-</span> <span class="fu">intersect</span>(step_vars, step_vars_red)</span>
+<span id="cb71-3"><a href="#cb71-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">Regressors also in section-3 stepwise model:"</span>, <span class="fu">length</span>(common_vars), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Regressors also in section-3 stepwise model: 3 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb73"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Shared variables:"</span>, <span class="fu">paste</span>(common_vars, <span class="at">collapse =</span> <span class="st">", "</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Shared variables: N.GES, H.MIN, SDENS </code></pre>
+</div>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
