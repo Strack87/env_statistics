@@ -145,10 +145,10 @@ par(mfrow = c(1, 1))   # reset layout
 qlevels <- levels(qclass)
 qranges <- sprintf("(%.3f, %.3f]", qbreaks[-5], qbreaks[-1])
 qdescr  <- c(
-  "lowest 25% of log(Al) values — typically found in the NW part of the study area",
-  "second quartile of log(Al) — transitional / background concentrations",
-  "third quartile of log(Al) — moderately elevated concentrations",
-  "highest 25% of log(Al) — hotspots concentrated in the SE part of the study area"
+  " — typically NW part of the area",
+  " — transitional / background concentrations",
+  " — moderately elevated concentrations",
+  " — hotspots in the SE part of the area"
 )
 
 par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
@@ -182,3 +182,204 @@ for (i in seq_along(qlevels)) {
 }
 
 par(mfrow = c(1, 1))   # reset layout
+
+
+# Empirical Variogram Analysis {#variogram} ####
+
+## Variogram Cloud
+cloud1 <- variog(s100, option = "cloud", max.dist = 400000)
+
+# Widen the left margin so the expression-based y-label is fully visible.
+# plot.variogram() ignores user pch/col, so draw an empty canvas and add the
+# points ourselves — this guarantees the legend symbol matches the plot.
+op <- par(mar = c(4, 5.2, 3, 1))
+plot(cloud1,
+     type = "n",
+     main = "Variogram cloud — log(Al)",
+     xlab = "Separation distance h (m)",
+     ylab = expression((1/2) * (z(x[i]) - z(x[j]))^2 ~ "[log(mg/kg)"^2 * "]")
+)
+points(cloud1$u, cloud1$v, pch = 1, col = "black", cex = 0.4)
+legend("topleft",
+       legend = "Sample pair",
+       pch    = 1,
+       col    = "black",
+       bty    = "n",
+       cex    = 0.85,
+       title  = "log(Al) variogram cloud")
+par(op)   # restore previous margin settings
+
+
+## Empirical (Binned) Variogram
+
+bin1 <- variog(s100, uvec = seq(0, 400000, l = 11))
+
+# plot.variogram() ignores user-supplied pch/col, so draw an empty canvas
+# first and add the markers ourselves — this guarantees the legend matches.
+plot(bin1,
+     type = "n",
+     main = "Empirical variogram — log(Al)",
+     xlab = "Separation distance h (m)",
+     ylab = expression(paste("Semivariance ", gamma, "(h)  [log(mg/kg)"^2, "]"))
+)
+points(bin1$u, bin1$v, pch = 16, col = "darkblue")
+
+# Annotate each bin with the number of pairs it contains (key diagnostic:
+# bins with few pairs are unreliable).
+text(bin1$u, bin1$v,
+     labels = bin1$n,
+     pos    = 3,        # above each point
+     cex    = 0.7,
+     col    = "grey40")
+legend("bottomright",
+       legend = c("Binned semivariance", "Pair count above point"),
+       col    = c("darkblue", "grey40"),
+       pch    = c(16, NA),
+       text.col = c("black", "grey40"),
+       bty    = "n",
+       cex    = 0.85,
+       title  = "log(Al) variogram")
+
+# Fitting a Theoretical Variogram Model {#variofit} ####
+# Fit a nested nugget + spherical model to the empirical variogram.
+# ini.cov.pars: initial values for c(sill sigma^2, range phi); nugget = tau^2 start
+# weights = "npairs": weight each lag class by the number of pairs (more robust)
+vfit <- variofit(
+  bin1,
+  cov.model  = "spherical",
+  ini.cov.pars = c(0.15, 250000),  # initial sill and range
+  nugget     = 0.05,               # initial nugget
+  weights    = "npairs"
+)
+
+# Print the fitted parameters
+print(vfit)
+
+# Extract and report the key variogram parameters
+nugget <- vfit$nugget
+sill   <- vfit$cov.pars[1]   # partial sill (sigma^2)
+range  <- vfit$cov.pars[2]   # range (phi)
+
+cat("\n--- Fitted variogram parameters ---\n")
+cat(sprintf("  Nugget  (tau^2):         %.4f\n", nugget))
+cat(sprintf("  Partial sill (sigma^2):  %.4f\n", sill))
+cat(sprintf("  Total sill:              %.4f\n", nugget + sill))
+cat(sprintf("  Range   (phi):           %.0f m\n", range))
+cat(sprintf("  Nugget/Sill ratio:       %.1f %%\n", 100 * nugget / (nugget + sill)))
+
+# plot.variogram() ignores user pch/col, so build the plot manually
+op <- par(mar = c(4, 5.2, 3, 1))
+plot(bin1,
+     type = "n",
+     main = "Variogram model fit — log(Al)",
+     xlab = "Separation distance h (m)",
+     ylab = expression(paste("Semivariance ", gamma, "(h)  [log(mg/kg)"^2, "]"))
+)
+points(bin1$u, bin1$v, pch = 16, col = "darkblue")
+
+# Fitted theoretical semivariogram (what the red line represents)
+lines(vfit, col = "red", lwd = 2)
+
+# Reference lines for the fitted parameters
+abline(h = nugget,          col = "grey50", lty = 2)
+abline(h = nugget + sill,   col = "grey50", lty = 2)
+abline(v = range,           col = "grey50", lty = 2)
+
+legend("bottomright",
+       legend = c(
+         "Empirical variogram (binned)",
+         "Fitted model: nugget + spherical",
+         sprintf("Nugget   tau^2 = %.4f", nugget),
+         sprintf("Sill     tau^2+sigma^2 = %.4f", nugget + sill),
+         sprintf("Range    phi = %.0f m", range)
+       ),
+       col = c("black", "red", "grey50", "grey50", "grey50"),
+       pch = c(1, NA, NA, NA, NA),
+       lty = c(NA, 1, 2, 2, 2),
+       lwd = c(NA, 2, 1, 1, 1),
+       bty = "n", cex = 0.85,
+       title = "log(Al) variogram")
+par(op)
+
+# Spatial Prediction: Kriging {#kriging} ####
+
+## Prediction Grid
+
+# Determine the spatial extent of the sampling domain
+x_range <- range(s100$coords[, 1])
+y_range <- range(s100$coords[, 2])
+cat("X range (Easting):  ", x_range, "\n")
+cat("Y range (Northing): ", y_range, "\n")
+
+# Create a 50×50 regular grid (2,500 prediction locations) across the study area.
+# A coarser grid (l=50) is used to keep computation time reasonable;
+# increase l (e.g. to 100) for a finer, smoother map.
+pred.grid <- expand.grid(
+  seq(x_range[1], x_range[2], l = 50),   # 50 equally spaced X values
+  seq(y_range[1], y_range[2], l = 50)    # 50 equally spaced Y values
+)
+cat("Number of prediction grid points:", nrow(pred.grid), "\n")
+
+# Visual check: plot the prediction grid overlaid on sample locations
+plot(pred.grid, pch = ".", col = "grey70",
+     xlab = "Easting (m)", ylab = "Northing (m)",
+     main = "Prediction grid (grey) and sample locations (blue)")
+points(s100$coords, pch = 16, col = "steelblue", cex = 0.6)
+legend("topright",
+       legend = c(sprintf("Prediction grid (n = %d)", nrow(pred.grid)),
+                  sprintf("Sample locations (n = %d)", nrow(s100$coords))),
+       col    = c("grey70", "steelblue"),
+       pch    = c(20, 16),
+       pt.cex = c(1.2, 0.9),
+       bty    = "n",
+       cex    = 0.85)
+
+## Kriging Estimation
+# Perform ordinary kriging using the fitted variogram model (vfit).
+# krige.conv() applies global neighbourhood (all data used for each prediction).
+# For large grids this can be slow — consider local neighbourhood for speed.
+kc <- krige.conv(
+  s100,
+  loc   = pred.grid,
+  krige = krige.control(obj.m = vfit)  # use the fitted variogram model
+)
+
+cat("Kriging complete.\n")
+cat("Predicted values range (log scale):", round(range(kc$predict), 3), "\n")
+cat("Back-transformed range (mg/kg):    ", round(range(exp(kc$predict)), 1), "\n")
+
+# Build a colour palette and matching breaks over the full prediction range
+n_col  <- 64
+pal    <- hcl.colors(n_col, palette = "YlOrRd", rev = TRUE)
+zlim   <- range(kc$predict)
+breaks <- seq(zlim[1], zlim[2], length.out = n_col + 1)
+
+# Split the device: wide map panel on the left, narrow colour bar on the right
+layout(matrix(c(1, 2), nrow = 1), widths = c(5, 1))
+op <- par(mar = c(4, 4, 3, 1))
+
+# Main kriging map
+image(kc,
+      loc    = pred.grid,
+      col    = pal,
+      breaks = breaks,
+      xlab   = "Easting (m)",
+      ylab   = "Northing (m)",
+      main   = "Kriging map — log(Al) [KOLA data]"
+)
+# Overlay the original sample locations so we can relate predictions to data
+points(s100$coords, pch = 16, cex = 0.4, col = "black")
+
+# --- Colour bar ---
+# Small top/bottom margins so the bar extends nearly the full figure height,
+# independent of the map panel's title/axis margins.
+par(mar = c(1.5, 0.5, 1.5, 4))
+plot.new()
+plot.window(xlim = c(0, 1), ylim = zlim, xaxs = "i", yaxs = "i")
+rect(0, breaks[-(n_col + 1)], 1, breaks[-1], col = pal, border = NA)
+axis(4, las = 1, cex.axis = 0.8)
+mtext("log(Al) [log(mg/kg)]", side = 4, line = 2.6, cex = 0.85)
+
+# Restore layout
+par(op)
+layout(1)

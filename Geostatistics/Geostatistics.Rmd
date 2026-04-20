@@ -220,7 +220,7 @@ qdescr  <- c(
   " NW part of the area",
   " transitional concentrations",
   " moderately elevated concentrations",
-  " hotspots in the SE part of the area"
+  " SE part of the area"
 )
 
 par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
@@ -269,16 +269,31 @@ The **variogram cloud** plots the squared difference of all sample pairs
 $\frac{1}{2}[z(x_i) - z(x_j)]^2$ against their separation distance $h$. It gives an
 initial impression of spatial variability and helps detect outliers.
 
-```{r variogram-cloud, fig.cap="Variogram cloud of log(Al). Each point represents one sample pair. The increasing trend with distance indicates positive spatial autocorrelation."}
+```{r variogram-cloud, fig.cap="Variogram cloud of log(Al). Each point represents one sample pair $(x_i,\\,x_j)$ plotted as the half-squared-difference $\\tfrac{1}{2}(z(x_i)-z(x_j))^2$ (units: $[\\log(\\text{mg/kg})]^2$) against the separation distance $h$ in metres. The increasing trend with distance indicates positive spatial autocorrelation."}
 # Compute and plot the omnidirectional variogram cloud.
 # max.dist = 400000 m (400 km) — covers roughly 2/3 of the study area's extent,
 # which is a common rule of thumb to avoid unreliable estimates at large lags.
 cloud1 <- variog(s100, option = "cloud", max.dist = 400000)
+
+# Widen the left margin so the expression-based y-label is fully visible.
+# plot.variogram() ignores user pch/col, so draw an empty canvas and add the
+# points ourselves — this guarantees the legend symbol matches the plot.
+op <- par(mar = c(4, 5.2, 3, 1))
 plot(cloud1,
+     type = "n",
      main = "Variogram cloud — log(Al)",
-     xlab = "Distance (m)",
-     ylab = expression(frac(1, 2) * "[z(x[i]) - z(x[j])]"^2)
+     xlab = "Separation distance h (m)",
+     ylab = expression((1/2) * (z(x[i]) - z(x[j]))^2 ~ "[log(mg/kg)"^2 * "]")
 )
+points(cloud1$u, cloud1$v, pch = 1, col = "black", cex = 0.4)
+legend("topleft",
+       legend = "Sample pair",
+       pch    = 1,
+       col    = "black",
+       bty    = "n",
+       cex    = 0.85,
+       title  = "log(Al) variogram cloud")
+par(op)
 ```
 
 **Interpretation:** The variogram cloud shows an increasing trend in semivariance with
@@ -290,18 +305,36 @@ for a cloud, but the upward trend is clear.
 
 We bin the pairs by distance to obtain a more readable **experimental variogram**.
 
-```{r empirical-variogram, fig.cap="Experimental (binned) variogram of log(Al) with 10 lag classes up to 400 km. The semivariance increases and then levels off, indicating the range of spatial dependence."}
+```{r empirical-variogram, fig.cap="Experimental (binned) variogram of log(Al) with 10 lag classes up to 400 km. Semivariance $\\gamma(h)$ is plotted in units of $[\\log(\\text{mg/kg})]^2$ against the separation distance $h$ in metres. Numbers above each point give the number of sample pairs contributing to that bin — small counts indicate less reliable estimates. The curve rises from a non-zero intercept and levels off, indicating a bounded spatial structure (nugget + sill)."}
 # Bin the variogram into 10 equal-width lag classes from 0 to 400,000 m.
 # uvec defines the bin boundaries; l=11 creates 10 intervals.
 bin1 <- variog(s100, uvec = seq(0, 400000, l = 11))
 
+# plot.variogram() ignores user-supplied pch/col, so draw an empty canvas
+# first and add the markers ourselves — this guarantees the legend matches.
 plot(bin1,
+     type = "n",
      main = "Empirical variogram — log(Al)",
-     xlab = "Distance (m)",
-     ylab = "Semivariance",
-     pch  = 16,
-     col  = "darkblue"
+     xlab = "Separation distance h (m)",
+     ylab = expression(paste("Semivariance ", gamma, "(h)  [log(mg/kg)"^2, "]"))
 )
+points(bin1$u, bin1$v, pch = 16, col = "darkblue")
+
+# Annotate each bin with the number of pairs it contains (bins with few pairs
+# are less reliable).
+text(bin1$u, bin1$v,
+     labels = bin1$n,
+     pos    = 3,
+     cex    = 0.7,
+     col    = "grey40")
+legend("bottomright",
+       legend = c("Binned semivariance", "Pair count above point"),
+       col    = c("darkblue", "grey40"),
+       pch    = c(16, NA),
+       text.col = c("black", "grey40"),
+       bty    = "n",
+       cex    = 0.85,
+       title  = "log(Al) variogram")
 ```
 
 **Interpretation:** The empirical variogram rises from a non-zero intercept at short
@@ -355,38 +388,61 @@ cat(sprintf("  Range   (phi):           %.0f m\n", range))
 cat(sprintf("  Nugget/Sill ratio:       %.1f %%\n", 100 * nugget / (nugget + sill)))
 ```
 
-```{r plot-variofit, fig.cap="Fitted nested variogram model (nugget + spherical) overlaid on the empirical variogram."}
-# Plot the empirical variogram points and overlay the fitted model line
+```{r plot-variofit, fig.cap="Fitted nested variogram model (nugget + spherical, red curve) overlaid on the empirical variogram (blue dots). The red curve is the theoretical semivariogram $\\gamma(h) = \\tau^2 + \\sigma^2 \\cdot \\text{Sph}(h;\\phi)$ evaluated at the parameters estimated by weighted least squares (weights = number of sample pairs per bin). Horizontal dashed lines mark the nugget $\\tau^2$ and the total sill $\\tau^2 + \\sigma^2$; the vertical dashed line marks the practical range $\\phi$."}
+# plot.variogram() ignores user pch/col, so build the plot manually
+op <- par(mar = c(4, 5.2, 3, 1))
 plot(bin1,
+     type = "n",
      main = "Variogram model fit — log(Al)",
-     xlab = "Distance (m)",
-     ylab = "Semivariance",
-     pch  = 16,
-     col  = "darkblue"
+     xlab = "Separation distance h (m)",
+     ylab = expression(paste("Semivariance ", gamma, "(h)  [log(mg/kg)"^2, "]"))
 )
-# lines.variomodel() draws the theoretical curve from the fitted model object
+points(bin1$u, bin1$v, pch = 16, col = "darkblue")
+
+# Fitted theoretical semivariogram (what the red line represents)
 lines(vfit, col = "red", lwd = 2)
+
+# Reference lines for the fitted parameters
+abline(h = nugget,          col = "grey50", lty = 2)
+abline(h = nugget + sill,   col = "grey50", lty = 2)
+abline(v = range,           col = "grey50", lty = 2)
+
 legend("bottomright",
        legend = c(
-         "Empirical variogram",
-         sprintf("Nugget: %.4f", nugget),
-         sprintf("Sill: %.4f", nugget + sill),
-         sprintf("Range: %.0f m", range)
+         "Empirical variogram (binned)",
+         "Fitted model: nugget + spherical",
+         sprintf("Nugget   tau^2 = %.4f", nugget),
+         sprintf("Sill     tau^2+sigma^2 = %.4f", nugget + sill),
+         sprintf("Range    phi = %.0f m", range)
        ),
-       col = c("darkblue", "white", "white", "white"),
-       pch = c(16, NA, NA, NA),
-       lty = c(0, 0, 0, 0),
-       bty = "n", cex = 0.85
-)
-lines(vfit, col = "red", lwd = 2)   # re-draw on top of legend box
+       col = c("black", "red", "grey50", "grey50", "grey50"),
+       pch = c(1, NA, NA, NA, NA),
+       lty = c(NA, 1, 2, 2, 2),
+       lwd = c(NA, 2, 1, 1, 1),
+       bty = "n", cex = 0.85,
+       title = "log(Al) variogram")
+par(op)
 ```
 
-**Interpretation:** The nested model $\gamma(h) = \tau^2 + \sigma^2 \cdot \text{Sph}(h;\phi)$
-provides a good fit to the empirical variogram. The nugget effect accounts for
-micro-scale variability and measurement error at distances smaller than the sampling
-interval. The spherical component captures the spatial autocorrelation structure, reaching
-its sill at the practical range $\phi$, beyond which samples can be considered spatially
-independent.
+**Interpretation:** The red curve is the fitted theoretical semivariogram
+$\gamma(h) = \tau^2 + \sigma^2 \cdot \text{Sph}(h;\phi)$ — i.e. the model that the
+subsequent kriging uses to quantify how similarity between sample pairs decays with
+distance. It closely tracks the binned empirical variogram (black circles), confirming
+that a nugget + spherical structure adequately describes the spatial correlation of
+log(Al).
+
+The calibrated parameters are
+$\tau^2 \approx `r round(nugget, 4)`$ (nugget),
+$\sigma^2 \approx `r round(sill, 4)`$ (partial sill) and
+$\phi \approx `r format(round(range, 0), big.mark = ",")`$ m (range), giving a total sill
+of $\tau^2 + \sigma^2 \approx `r round(nugget + sill, 4)`$ (all in units of
+$[\log(\text{mg/kg})]^2$). The **nugget/sill ratio** is
+$`r round(100 * nugget / (nugget + sill), 1)`\%$, meaning that roughly that fraction of
+the total variance is due to micro-scale variability and measurement error at distances
+smaller than the sampling interval, while the remainder is spatially structured. The
+**practical range** of $\approx `r format(round(range/1000, 0), big.mark = ",")`$ km marks
+the distance beyond which samples can be considered spatially independent; within this
+range, kriging will borrow strength from neighbouring observations.
 
 ---
 
@@ -417,6 +473,14 @@ plot(pred.grid, pch = ".", col = "grey70",
      xlab = "Easting (m)", ylab = "Northing (m)",
      main = "Prediction grid (grey) and sample locations (blue)")
 points(s100$coords, pch = 16, col = "steelblue", cex = 0.6)
+legend("topright",
+       legend = c(sprintf("Prediction grid (n = %d)", nrow(pred.grid)),
+                  sprintf("Sample locations (n = %d)", nrow(s100$coords))),
+       col    = c("grey70", "steelblue"),
+       pch    = c(20, 16),
+       pt.cex = c(1.2, 0.9),
+       bty    = "n",
+       cex    = 0.85)
 ```
 
 ## Kriging Estimation
@@ -440,22 +504,42 @@ cat("Back-transformed range (mg/kg):    ", round(range(exp(kc$predict)), 1), "\n
 
 ## Kriging Map
 
-```{r kriging-map, fig.cap="Ordinary kriging map of log(Al) across the KOLA study area (50×50 grid). Colour scale: blue = low, red = high log(Al). Sample locations are overlaid as black dots.", fig.height=6}
-# image() renders the kriging predictions as a colour-coded raster map.
-# The predictions are on the log(Al) scale.
-image(kc,
-      loc  = pred.grid,
-      xlab = "Easting (m)",
-      ylab = "Northing (m)",
-      main = "Kriging map — log(Al) [KOLA data]"
-)
+```{r kriging-map, fig.cap="Ordinary kriging map of log(Al) across the KOLA study area on a 50×50 prediction grid. The colour scale on the right encodes the predicted log(Al) concentration in units of log(mg/kg); yellow represents low values, dark red represents high values. Black dots mark the original sample locations. Note that predicted values are on the log scale — apply `exp()` to back-transform to Al concentration in mg/kg.", fig.height=6, fig.width=7.5}
+# Build a colour palette and matching breaks over the full prediction range
+n_col  <- 64
+pal    <- hcl.colors(n_col, palette = "YlOrRd", rev = TRUE)
+zlim   <- range(kc$predict)
+breaks <- seq(zlim[1], zlim[2], length.out = n_col + 1)
 
+# Split the device: wide map panel on the left, narrow colour bar on the right
+layout(matrix(c(1, 2), nrow = 1), widths = c(5, 1))
+op <- par(mar = c(4, 4, 3, 1))
+
+# Main kriging map
+image(kc,
+      loc    = pred.grid,
+      col    = pal,
+      breaks = breaks,
+      xlab   = "Easting (m)",
+      ylab   = "Northing (m)",
+      main   = "Kriging map — log(Al) [KOLA data]"
+)
 # Overlay the original sample locations so we can relate predictions to data
 points(s100$coords, pch = 16, cex = 0.4, col = "black")
 
-# Add a text annotation reminding readers of the scale
-mtext("Note: predicted values are on log-scale; exp() for back-transformation",
-      side = 1, line = 4, cex = 0.75, col = "grey40")
+# --- Colour bar ---
+# Small top/bottom margins so the bar extends nearly the full figure height,
+# independent of the map panel's title/axis margins.
+par(mar = c(1.5, 0.5, 1.5, 4))
+plot.new()
+plot.window(xlim = c(0, 1), ylim = zlim, xaxs = "i", yaxs = "i")
+rect(0, breaks[-(n_col + 1)], 1, breaks[-1], col = pal, border = NA)
+axis(4, las = 1, cex.axis = 0.8)
+mtext("log(Al) [log(mg/kg)]", side = 4, line = 2.6, cex = 0.85)
+
+# Restore layout
+par(op)
+layout(1)
 ```
 
 ```{r kriging-variance-map, fig.cap="Kriging variance map. Low variance (blue) indicates reliable predictions; high variance (red) indicates uncertainty, typically at the edges or far from sample locations.", fig.height=6}
