@@ -145,10 +145,10 @@ par(mfrow = c(1, 1))   # reset layout
 qlevels <- levels(qclass)
 qranges <- sprintf("(%.3f, %.3f]", qbreaks[-5], qbreaks[-1])
 qdescr  <- c(
-  " — typically NW part of the area",
-  " — transitional / background concentrations",
-  " — moderately elevated concentrations",
-  " — hotspots in the SE part of the area"
+  " NW area",
+  " transitional c%",
+  " moderately elevated c%",
+  " SE area"
 )
 
 par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
@@ -228,7 +228,7 @@ points(bin1$u, bin1$v, pch = 16, col = "darkblue")
 # bins with few pairs are unreliable).
 text(bin1$u, bin1$v,
      labels = bin1$n,
-     pos    = 3,        # above each point
+     pos    = 1,        # above each point
      cex    = 0.7,
      col    = "grey40")
 legend("bottomright",
@@ -373,7 +373,7 @@ points(s100$coords, pch = 16, cex = 0.4, col = "black")
 # --- Colour bar ---
 # Small top/bottom margins so the bar extends nearly the full figure height,
 # independent of the map panel's title/axis margins.
-par(mar = c(1.5, 0.5, 1.5, 4))
+par(mar = c(4, 0.5, 3, 4))
 plot.new()
 plot.window(xlim = c(0, 1), ylim = zlim, xaxs = "i", yaxs = "i")
 rect(0, breaks[-(n_col + 1)], 1, breaks[-1], col = pal, border = NA)
@@ -383,3 +383,88 @@ mtext("log(Al) [log(mg/kg)]", side = 4, line = 2.6, cex = 0.85)
 # Restore layout
 par(op)
 layout(1)
+
+# The kriging variance kc$krige.var quantifies prediction uncertainty.
+# High variance occurs in data-sparse regions (edge effects, gaps in sampling).
+image(kc,
+      values = kc$krige.var,  # plot variance instead of predictions
+      loc    = pred.grid,
+      xlab   = "Easting (m)",
+      ylab   = "Northing (m)",
+      main   = "Kriging variance map — log(Al)"
+)
+points(s100$coords, pch = 16, cex = 0.4, col = "black")
+
+
+# A filled contour plot provides an alternative, often cleaner visualisation.
+contour(kc,
+        filled      = TRUE,
+        coords.data = s100$coords,
+        color       = heat.colors,
+        values      = kc$predict,
+        main        = "Kriging map (contour) — log(Al)",
+        xlab        = "Easting (m)",
+        ylab        = "Northing (m)"
+)
+
+# Voluntary Exercise: Sensitivity of the Kriging Map to the Variogram Model {#voluntary}####
+
+
+# IMPORTANT: we must NOT call variofit() here. variofit() re-optimises sill and
+# range starting from our "initial" values, so (a), (b) and (c) would all
+# converge to the same best-fit model and produce identical maps.
+# Instead we pass the desired parameters DIRECTLY to krige.control() via
+# cov.pars / nugget, which uses them as fixed values for kriging.
+
+# --- Helper: kriging with a fully specified variogram (no fitting) ---
+krige_fixed <- function(cov_pars, nugget_val, model = "spherical") {
+  krige.conv(
+    s100,
+    loc   = pred.grid,
+    krige = krige.control(
+      cov.model = model,
+      cov.pars  = cov_pars,   # c(sigma^2, phi) — partial sill and range
+      nugget    = nugget_val  # tau^2
+    )
+  )
+}
+
+# Base parameters from the fitted model
+s2   <- sill           # partial sill
+phi  <- range          # range
+tau2 <- nugget         # nugget
+
+# (a) Spherical, no nugget: sill = total sill, same range
+kc_a <- krige_fixed(cov_pars = c(s2 + tau2, phi),       nugget_val = 0)
+
+# (b) Spherical, no nugget, half the sill
+kc_b <- krige_fixed(cov_pars = c((s2 + tau2) / 2, phi), nugget_val = 0)
+
+# (c) Spherical, no nugget, half the range
+kc_c <- krige_fixed(cov_pars = c(s2 + tau2, phi / 2),   nugget_val = 0)
+
+# (d) Pure nugget effect: sigma^2 -> 0, all variance is nugget
+kc_d <- krige_fixed(cov_pars = c(1e-10, 1),             nugget_val = s2 + tau2)
+
+cat("Alternative models computed successfully.\n")
+
+# Plot all four alternative maps side by side for comparison
+par(mfrow = c(2, 2), mar = c(3, 3, 2, 1), mgp = c(1.8, 0.6, 0))
+
+image(kc_a, loc = pred.grid, xlab = "Easting", ylab = "Northing",
+      main = "(a) Spherical, no nugget")
+points(s100$coords, pch = ".", cex = 0.5)
+
+image(kc_b, loc = pred.grid, xlab = "Easting", ylab = "Northing",
+      main = "(b) No nugget, half sill")
+points(s100$coords, pch = ".", cex = 0.5)
+
+image(kc_c, loc = pred.grid, xlab = "Easting", ylab = "Northing",
+      main = "(c) No nugget, half range")
+points(s100$coords, pch = ".", cex = 0.5)
+
+image(kc_d, loc = pred.grid, xlab = "Easting", ylab = "Northing",
+      main = "(d) Pure nugget effect")
+points(s100$coords, pch = ".", cex = 0.5)
+
+par(mfrow = c(1, 1))  # reset layout

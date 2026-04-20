@@ -210,17 +210,17 @@ par(mfrow = c(1, 1))   # reset layout
 
 ```
 
-```{r points-plot, fig.cap="Spatial distribution of log(Al) values split by quartile. Each panel highlights the samples belonging to one quartile class (coloured) against all other samples (light grey) for spatial context. Q1 (blue): lowest 25% of log(Al), mainly NW. Q2 (green): transitional/background values. Q3 (orange): moderately elevated values. Q4 (red): highest 25% of log(Al), concentrated in the SE. Sample counts are annotated above each panel. Concentration ranges in the legends are given in log(mg/kg).", fig.width=8, fig.height=7}
+```{r points-plot, fig.cap="Spatial distribution of log(Al) values split by quartile. Each panel highlights the samples belonging to one quartile class (coloured) against all other samples (light grey) for spatial context. Q1 (blue): lowest 25% of log(Al), mainly NW. Q2 (green): transitional/background values. Q3 (orange): moderately elevated values. Q4 (red): highest 25% of log(Al), concentrated in the SE. Sample counts are annotated above each panel. Concentration ranges in the legends are given in log(mg/kg).", fig.width=6.5, fig.height=5.5}
 # One panel per quartile: isolates the spatial distribution of each class so
 # low- and high-value clusters can be inspected independently. Background grey
 # points show all other samples for context.
 qlevels <- levels(qclass)
 qranges <- sprintf("(%.3f, %.3f]", qbreaks[-5], qbreaks[-1])
 qdescr  <- c(
-  " NW part of the area",
-  " transitional concentrations",
-  " moderately elevated concentrations",
-  " SE part of the area"
+  " NW area",
+  " transitional c%",
+  " moderately elevated c%",
+  " SE area"
 )
 
 par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
@@ -244,7 +244,7 @@ for (i in seq_along(qlevels)) {
          col    = c(qcols[i], "grey85"),
          pch    = 16,
          bty    = "n",
-         cex    = 0.8,
+         cex    = 0.6,
          title  = "log(Al) [log(mg/kg)]")
 
   mtext(sprintf("n = %d of %d samples", sum(sel), length(z_val)),
@@ -324,7 +324,7 @@ points(bin1$u, bin1$v, pch = 16, col = "darkblue")
 # are less reliable).
 text(bin1$u, bin1$v,
      labels = bin1$n,
-     pos    = 3,
+     pos    = 1,
      cex    = 0.7,
      col    = "grey40")
 legend("bottomright",
@@ -415,8 +415,8 @@ legend("bottomright",
          sprintf("Sill     tau^2+sigma^2 = %.4f", nugget + sill),
          sprintf("Range    phi = %.0f m", range)
        ),
-       col = c("black", "red", "grey50", "grey50", "grey50"),
-       pch = c(1, NA, NA, NA, NA),
+       col = c("darkblue", "red", "grey50", "grey50", "grey50"),
+       pch = c(16, NA, NA, NA, NA),
        lty = c(NA, 1, 2, 2, 2),
        lwd = c(NA, 2, 1, 1, 1),
        bty = "n", cex = 0.85,
@@ -504,7 +504,7 @@ cat("Back-transformed range (mg/kg):    ", round(range(exp(kc$predict)), 1), "\n
 
 ## Kriging Map
 
-```{r kriging-map, fig.cap="Ordinary kriging map of log(Al) across the KOLA study area on a 50×50 prediction grid. The colour scale on the right encodes the predicted log(Al) concentration in units of log(mg/kg); yellow represents low values, dark red represents high values. Black dots mark the original sample locations. Note that predicted values are on the log scale — apply `exp()` to back-transform to Al concentration in mg/kg.", fig.height=6, fig.width=7.5}
+```{r kriging-map, fig.cap="Ordinary kriging map of log(Al) across the KOLA study area on a 50×50 prediction grid. The colour scale on the right encodes the predicted log(Al) concentration in units of log(mg/kg); yellow represents low values, dark red represents high values. Black dots mark the original sample locations. Note that predicted values are on the log scale — apply `exp()` to back-transform to Al concentration in mg/kg.", fig.height=5.5, fig.width=6.5}
 # Build a colour palette and matching breaks over the full prediction range
 n_col  <- 64
 pal    <- hcl.colors(n_col, palette = "YlOrRd", rev = TRUE)
@@ -530,7 +530,7 @@ points(s100$coords, pch = 16, cex = 0.4, col = "black")
 # --- Colour bar ---
 # Small top/bottom margins so the bar extends nearly the full figure height,
 # independent of the map panel's title/axis margins.
-par(mar = c(1.5, 0.5, 1.5, 4))
+par(mar = c(4, 0.5, 3, 4))
 plot.new()
 plot.window(xlim = c(0, 1), ylim = zlim, xaxs = "i", yaxs = "i")
 rect(0, breaks[-(n_col + 1)], 1, breaks[-1], col = pal, border = NA)
@@ -586,9 +586,23 @@ alternative models:
 **(d)** Pure nugget effect model (no spatial structure)
 
 ```{r voluntary-models, cache=TRUE}
-# --- Helper function: run kriging with a given model and return predictions ---
-krige_with_model <- function(vmod) {
-  krige.conv(s100, loc = pred.grid, krige = krige.control(obj.m = vmod))
+# IMPORTANT: we must NOT call variofit() here. variofit() re-optimises sill and
+# range starting from our "initial" values, so (a), (b) and (c) would all
+# converge to the same best-fit model and produce identical maps.
+# Instead we pass the desired parameters DIRECTLY to krige.control() via
+# cov.pars / nugget, which uses them as fixed values for kriging.
+
+# --- Helper: kriging with a fully specified variogram (no fitting) ---
+krige_fixed <- function(cov_pars, nugget_val, model = "spherical") {
+  krige.conv(
+    s100,
+    loc   = pred.grid,
+    krige = krige.control(
+      cov.model = model,
+      cov.pars  = cov_pars,   # c(sigma^2, phi) — partial sill and range
+      nugget    = nugget_val  # tau^2
+    )
+  )
 }
 
 # Base parameters from the fitted model
@@ -596,32 +610,17 @@ s2   <- sill           # partial sill
 phi  <- range          # range
 tau2 <- nugget         # nugget
 
-# (a) Spherical, no nugget: set nugget = 0, keep sill and range
-m_a <- variofit(bin1, cov.model = "spherical",
-                ini.cov.pars = c(s2 + tau2, phi),  # sill = total sill now
-                fix.nugget = TRUE, nugget = 0, weights = "npairs")
+# (a) Spherical, no nugget: sill = total sill, same range
+kc_a <- krige_fixed(cov_pars = c(s2 + tau2, phi),       nugget_val = 0)
 
 # (b) Spherical, no nugget, half the sill
-m_b <- variofit(bin1, cov.model = "spherical",
-                ini.cov.pars = c((s2 + tau2) / 2, phi),
-                fix.nugget = TRUE, nugget = 0, weights = "npairs")
+kc_b <- krige_fixed(cov_pars = c((s2 + tau2) / 2, phi), nugget_val = 0)
 
 # (c) Spherical, no nugget, half the range
-m_c <- variofit(bin1, cov.model = "spherical",
-                ini.cov.pars = c(s2 + tau2, phi / 2),
-                fix.nugget = TRUE, nugget = 0, weights = "npairs")
+kc_c <- krige_fixed(cov_pars = c(s2 + tau2, phi / 2),   nugget_val = 0)
 
-# (d) Pure nugget effect: no spatial correlation (sill = 0, large range is irrelevant)
-# Represent as exponential with a very small range → converges to pure nugget
-m_d <- variofit(bin1, cov.model = "spherical",
-                ini.cov.pars = c(1e-6, 1),    # nearly zero spatial variance
-                fix.nugget = TRUE, nugget = nugget + sill, weights = "npairs")
-
-# Run kriging for all four alternative models
-kc_a <- krige_with_model(m_a)
-kc_b <- krige_with_model(m_b)
-kc_c <- krige_with_model(m_c)
-kc_d <- krige_with_model(m_d)
+# (d) Pure nugget effect: sigma^2 -> 0, all variance is nugget
+kc_d <- krige_fixed(cov_pars = c(1e-10, 1),             nugget_val = s2 + tau2)
 
 cat("Alternative models computed successfully.\n")
 ```
@@ -655,9 +654,12 @@ par(mfrow = c(1, 1))  # reset layout
   the data values at sample locations (exact interpolation), producing a slightly
   rougher map with more pronounced local extremes.
 
-- **(b) Half sill:** Halving the sill reduces the total variability assumed in the model.
-  The spatial pattern remains identical to (a) but the colour range narrows — the map
-  appears less contrasted, reflecting that the model now assumes less spatial variance.
+- **(b) Half sill:** Halving the sill (with nugget = 0) **scales the entire covariance
+  matrix by a constant factor**. Because the ordinary-kriging weights are obtained from
+  $C \boldsymbol{\lambda} = \mathbf{c}_0$ with $\sum \lambda_i = 1$, multiplying both
+  sides by the same constant leaves $\boldsymbol{\lambda}$ — and therefore the kriged
+  predictions — **unchanged**. The map is visually identical to (a); only the kriging
+  *variance* is halved. This is a well-known invariance property of ordinary kriging.
 
 - **(c) Half range:** Reducing the range makes the model assume that spatial correlation
   dies out at shorter distances. Kriging relies less on distant samples, producing
