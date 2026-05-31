@@ -1,0 +1,21 @@
+% Preamble snippet included only for the PDF output (via pdf_document: includes: in_header).
+% LaTeX-only directives that must not appear in HTML or Markdown output.
+\PassOptionsToPackage{table}{xcolor}
+\usepackage{xcolor}
+% xcolor may already have been loaded by the pandoc template without the
+% [table] option, which leaves \rowcolors undefined. Load colortbl directly
+% so \rowcolors is always available regardless of load order.
+\usepackage{colortbl}
+\definecolor{linkblue}{HTML}{1166CC}
+\definecolor{rowalt}{HTML}{F2F4F8}
+\usepackage[colorlinks=true,allcolors=linkblue,linktoc=all]{hyperref}
+\usepackage{xurl}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{ragged2e}
+\usepackage{etoolbox}
+\let\OrigHyperref\hyperref
+\renewcommand{\hyperref}[2][]{\OrigHyperref[#1]{\textcolor{linkblue}{#2}}}
+\AtBeginEnvironment{longtable}{\rowcolors{2}{white}{rowalt}\small}
+\AtBeginEnvironment{tabular}{\rowcolors{2}{white}{rowalt}\small}
+\renewcommand{\arraystretch}{1.15}

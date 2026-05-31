@@ -1,0 +1,788 @@
+# Vienna UHI study – integrated R pipeline
+Group 2, Andrei Lucian Strachinaru (12543617), Hovhanniyan Norayr
+(12104935), Leon Lehmann (12020654)
+2026-05-31
+
+# Overview
+
+This document mirrors `final_script.R` – a single integrated pipeline
+covering the full Vienna UHI study (download, preprocessing, indicators,
+ideal-night filter, homogenisation, trend analysis, heatwave
+amplification, and land-cover regression). Each section below maps 1:1
+to a banner in the source script and follows the report’s chapter
+structure (§2.1 … §3.9). Run the .R file directly to execute the
+pipeline; this Rmd is a typeset view of the same code (`eval=FALSE`).
+
+# Preamble: paths, station set, packages
+
+``` r
+#!/usr/bin/env Rscript
+# =============================================================================
+# Vienna Urban Heat Island study, 2005-2025 -- INTEGRATED PIPELINE
+#
+# Group 2
+#   Andrei Lucian Strachinaru (12543617)
+#   Hovhanniyan Norayr        (12104935)
+#   Leon Lehmann              (12020654)
+#
+# Section banners follow the report chapter structure. Run sequentially
+# from the project root, or source individual blocks.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# REQUIRED PACKAGES
+# -----------------------------------------------------------------------------
+# CRAN packages (uncomment the install.packages() line to install on a fresh
+# machine; the auto-installer below also handles missing ones at runtime):
+
+# install.packages("zoo")          # gsdata returns zoo objects
+# install.packages("sf")           # spatial features (station map)
+# install.packages("ggplot2")      # plotting (station map)
+# install.packages("ggspatial")    # OSM tiles + scale bar (station map)
+# install.packages("osmdata")      # Overpass fallback for Vienna boundary
+# install.packages("prettymapr")   # required by ggspatial::annotation_map_tile
+# install.packages("rosm")         # OSM tile backend used by ggspatial
+# install.packages("raster")       # required by rosm to load tiles
+# install.packages("sp")           # raster dependency
+# install.packages("climatol")     # SNHT homogenisation
+# install.packages("trend")        # Mann-Kendall, Sen, Pettitt
+# install.packages("kableExtra")   # styled tables (used by docs/report.Rmd)
+# install.packages("rmarkdown")    # to render the report Rmd
+
+# Optional GitHub-only package (GeoSphere Austria data API client):
+# if (!requireNamespace("remotes", quietly = TRUE)) install.packages("remotes")
+# remotes::install_github("retostauffer/gsdata")
+
+# TinyTeX for the PDF render of any Rmd (one-time):
+# install.packages("tinytex"); tinytex::install_tinytex()
+
+# -----------------------------------------------------------------------------
+# Auto-install + load all required packages quietly. Note: `gsdata` is GitHub-
+# only and is installed via remotes if missing.
+# -----------------------------------------------------------------------------
+CRAN_PKGS <- c("zoo","sf","ggplot2","ggspatial","osmdata","prettymapr",
+               "rosm","raster","sp","climatol","trend","kableExtra")
+
+suppressPackageStartupMessages({
+  for (p in CRAN_PKGS) {
+    if (!requireNamespace(p, quietly = TRUE))
+      install.packages(p, repos = "https://cloud.r-project.org")
+  }
+  if (!requireNamespace("gsdata", quietly = TRUE)) {
+    if (!requireNamespace("remotes", quietly = TRUE))
+      install.packages("remotes", repos = "https://cloud.r-project.org")
+    remotes::install_github("retostauffer/gsdata")
+  }
+
+  # Base/recommended (always available; explicit for clarity):
+  library(png);   library(grid)
+  # CRAN:
+  library(zoo);   library(sf);        library(ggplot2);   library(ggspatial)
+  library(osmdata); library(climatol); library(trend);    library(kableExtra)
+  # GitHub:
+  library(gsdata)
+})
+
+# Universal paths
+RAW <- "data/raw"; CLN <- "data/cleaned"; IND <- "data/indicators"
+RES <- "data/results"; FIG <- "output/figures"; EXT <- "data/external"
+for (d in c(RAW, CLN, IND, RES, FIG, EXT))
+  dir.create(d, showWarnings = FALSE, recursive = TRUE)
+
+# Active station set: 3 urban + 3 rural. Schwechat dropped (hourly rr 100% NA).
+URBAN <- c("wien_innerestadt","wien_hohewarte","wien_unterlaa")
+RURAL <- c("gross_enzersdorf","langenlebarn",  "wien_mariabrunn")
+ALL   <- c(URBAN, RURAL)
+SHORT <- c(wien_innerestadt="IS", wien_hohewarte="HW", wien_unterlaa="UL",
+           gross_enzersdorf="GE", langenlebarn  ="LL", wien_mariabrunn="MB")
+LCZ   <- c(wien_innerestadt="2", wien_hohewarte="6",   wien_unterlaa="9/D",
+           gross_enzersdorf="D", langenlebarn  ="D",   wien_mariabrunn="A/B")
+COORDS <- list(  # lon, lat, alt(m)
+  wien_innerestadt = c(16.371, 48.198, 177),
+  wien_hohewarte   = c(16.357, 48.249, 198),
+  wien_unterlaa    = c(16.419, 48.125, 200),
+  gross_enzersdorf = c(16.559, 48.200, 154),
+  langenlebarn     = c(16.118, 48.324, 175),
+  wien_mariabrunn  = c(16.229, 48.207, 225))
+
+START_DATE <- "2005-01-01"
+END_DATE   <- "2025-12-31"
+```
+
+# §2.1 – STATION NETWORK: DOWNLOAD DAILY + HOURLY + SYNOP
+
+``` r
+# GeoSphere TAWES IDs for klima-v2; WMO IDs for synop-v1.
+
+STATION_IDS <- c(wien_innerestadt = 5904, wien_hohewarte = 5925,
+                 wien_unterlaa = 107,  gross_enzersdorf = 31,
+                 langenlebarn  = 51,   wien_mariabrunn  = 106)
+SYNOP_IDS   <- c(wien_hohewarte = 11035)  # only HW is needed for cloud-cover
+
+PARAMS_DAILY  <- c("tlmax","tlmin","tl_mittel","tl_i","tl_ii","tl_iii",
+                   "rf_mittel","rf_i","rf_ii","rf_iii","dampf_mittel",
+                   "vv_mittel","ffx","bewm_mittel","rr","so_h","cglo_j","p_mittel")
+PARAMS_HOURLY <- c("tl","ff","ffx","rr","so_h","cglo")
+PARAMS_SYNOP  <- c("N","ff","T","Td","rel")
+
+download_one <- function(resource, ids, params, prefix) {
+  for (stn in names(ids)) {
+    tryCatch({
+      d <- gs_stationdata(mode="historical", resource_id=resource,
+                          start=START_DATE, end=END_DATE,
+                          parameters=params, station_ids=ids[[stn]],
+                          expert=TRUE)
+      if (inherits(d,"list") && !inherits(d,"zoo")) d <- d[[as.character(ids[[stn]])]]
+      df <- data.frame(datetime=index(d), coredata(d), stringsAsFactors=FALSE)
+      write.csv(df, sprintf("%s/%s_%s_%s_to_%s.csv",
+                            RAW, prefix, stn, START_DATE, END_DATE),
+                row.names=FALSE)
+    }, error=function(e) message(sprintf("  %s/%s: %s", resource, stn, conditionMessage(e))))
+    Sys.sleep(1)
+  }
+}
+
+run_downloads <- function() {
+  download_one("klima-v2-1d", STATION_IDS, PARAMS_DAILY,  "daily")
+  download_one("klima-v2-1h", STATION_IDS, PARAMS_HOURLY, "hourly")
+  download_one("synop-v1-1h", SYNOP_IDS,   PARAMS_SYNOP,  "synop")
+}
+# Uncomment to download fresh data:
+# run_downloads()
+```
+
+# §2.2 – DATA ACQUISITION & PREPROCESSING
+
+``` r
+# Two QC actions:
+#   (a) Convert daily rr = -1 (GeoSphere "trace precipitation" sentinel) to NA
+#   (b) Skip Schwechat-named raw files (hourly rr 100% NA)
+
+active_prefixes <- c(paste0(rep(c("daily_","hourly_"), each=length(ALL)), ALL),
+                     "synop_wien_hohewarte_")
+is_active_file <- function(bn) any(vapply(active_prefixes,
+  function(p) startsWith(bn, p), logical(1)))
+
+apply_rr_fix <- function(df) {
+  if ("rr" %in% names(df))
+    df$rr[!is.na(df$rr) & df$rr == -1] <- NA_real_
+  df
+}
+
+preprocess <- function() {
+  for (f in list.files(RAW, pattern="\\.csv$", full.names=TRUE)) {
+    bn <- basename(f); if (!is_active_file(bn)) next
+    out <- file.path(CLN, bn)
+    if (startsWith(bn, "daily_")) {
+      write.csv(apply_rr_fix(read.csv(f, check.names=FALSE)), out, row.names=FALSE)
+    } else file.copy(f, out, overwrite=TRUE)
+  }
+}
+preprocess()
+```
+
+# §2.3 – PARAMETERS AND UNITS (documentation only; see Table 2 of the report)
+
+``` r
+# tl_mittel/tlmax/tlmin (°C), rr (mm), ff (m/s), bewm_mittel (%, 0-100),
+# N synop (oktas 0-8), p_mittel (hPa), cglo_j (J cm⁻²), so_h (hours).
+```
+
+# §2.4 – DERIVED INDICATORS (DTR, ΔT pairs, annual aggregates)
+
+``` r
+load_daily <- function(stn) {
+  f  <- list.files(CLN, pattern=sprintf("^daily_%s_.*\\.csv$", stn), full.names=TRUE)
+  df <- read.csv(f, check.names=FALSE)
+  df$datetime <- as.Date(df$datetime); df$station <- stn
+  df$lcz <- LCZ[stn]; df$role <- if (stn %in% URBAN) "urban" else "rural"; df
+}
+
+# Pad missing columns with NA so per-station frames can be rbind-ed
+rbind_fill <- function(lst) {
+  cols <- unique(unlist(lapply(lst, names)))
+  do.call(rbind, lapply(lst, function(d) { d[setdiff(cols,names(d))] <- NA; d[cols] }))
+}
+
+build_indicators <- function() {
+  panel <- rbind_fill(lapply(ALL, load_daily))
+  panel$year  <- as.integer(format(panel$datetime, "%Y"))
+  panel$month <- as.integer(format(panel$datetime, "%m"))
+  panel$dtr   <- panel$tlmax - panel$tlmin
+
+  # Wide-pivot Tmean/Tmax/Tmin to compute all 9 urban×rural pairs
+  pivot <- function(var, suf) {
+    Reduce(function(a,b) merge(a,b, by="datetime", all=TRUE),
+           lapply(ALL, function(s) {
+             x <- panel[panel$station==s, c("datetime", var)]
+             names(x)[2] <- paste0(SHORT[s], "_", suf); x }))
+  }
+  wide <- Reduce(function(a,b) merge(a,b,by="datetime",all=TRUE),
+                 list(pivot("tl_mittel","tmean"),
+                      pivot("tlmax","tmax"),
+                      pivot("tlmin","tmin")))
+
+  delta_T <- do.call(rbind, lapply(URBAN, function(u) {
+    do.call(rbind, lapply(RURAL, function(r) data.frame(
+      datetime=wide$datetime, urban=u, rural=r,
+      pair=paste0(SHORT[u],"_vs_",SHORT[r]),
+      delta_T_mean = wide[[paste0(SHORT[u],"_tmean")]] - wide[[paste0(SHORT[r],"_tmean")]],
+      delta_T_max  = wide[[paste0(SHORT[u],"_tmax")]]  - wide[[paste0(SHORT[r],"_tmax")]],
+      delta_T_min  = wide[[paste0(SHORT[u],"_tmin")]]  - wide[[paste0(SHORT[r],"_tmin")]],
+      stringsAsFactors=FALSE)))
+  }))
+  delta_T$year <- as.integer(format(delta_T$datetime, "%Y"))
+
+  # Annual threshold counts; suppress when >10% NAs in the year
+  annual <- do.call(rbind, lapply(ALL, function(s) {
+    d <- panel[panel$station==s, ]
+    do.call(rbind, lapply(sort(unique(d$year)), function(y) {
+      dy <- d[d$year==y, ]; n <- nrow(dy)
+      sup <- function(v, na) if (na/n > 0.1) NA else v
+      data.frame(station=s, role=unique(dy$role), lcz=LCZ[s], year=y,
+        n_days=n,
+        tmean_ann       = sup(mean(dy$tl_mittel, na.rm=TRUE), sum(is.na(dy$tl_mittel))),
+        tmax_ann        = sup(mean(dy$tlmax,     na.rm=TRUE), sum(is.na(dy$tlmax))),
+        tmin_ann        = sup(mean(dy$tlmin,     na.rm=TRUE), sum(is.na(dy$tlmin))),
+        dtr_ann         = sup(mean(dy$dtr,       na.rm=TRUE), sum(is.na(dy$dtr))),
+        tropical_nights = sup(sum(dy$tlmin >= 20, na.rm=TRUE), sum(is.na(dy$tlmin))),
+        summer_days     = sup(sum(dy$tlmax >= 25, na.rm=TRUE), sum(is.na(dy$tlmax))),
+        hot_days        = sup(sum(dy$tlmax >= 30, na.rm=TRUE), sum(is.na(dy$tlmax)))) }))
+  }))
+
+  annual_delta <- do.call(rbind, lapply(unique(delta_T$pair), function(p) {
+    dp <- delta_T[delta_T$pair==p, ]
+    do.call(rbind, lapply(sort(unique(dp$year)), function(y) {
+      dy <- dp[dp$year==y, ]
+      data.frame(pair=p, urban=unique(dy$urban), rural=unique(dy$rural), year=y,
+        delta_T_mean_ann = mean(dy$delta_T_mean, na.rm=TRUE),
+        delta_T_max_ann  = mean(dy$delta_T_max,  na.rm=TRUE),
+        delta_T_min_ann  = mean(dy$delta_T_min,  na.rm=TRUE))
+    }))
+  }))
+
+  write.csv(panel[, intersect(names(panel),
+            c("datetime","year","month","station","role","lcz",
+              "tl_mittel","tlmax","tlmin","dtr","rr","bewm_mittel"))],
+            file.path(IND, "daily_panel.csv"),        row.names=FALSE)
+  write.csv(delta_T,      file.path(IND, "daily_delta_T.csv"),    row.names=FALSE)
+  write.csv(annual,       file.path(IND, "annual_indicators.csv"),row.names=FALSE)
+  write.csv(annual_delta, file.path(IND, "annual_delta_T.csv"),   row.names=FALSE)
+}
+build_indicators()
+```
+
+# §2.5 – IDEAL-NIGHT FILTER
+
+``` r
+# Criteria, all evaluated in the 20:00-04:00 UTC nocturnal window:
+#   1. Wind  : mean ff < 2 m/s at HW          (klima-v2-1h)
+#   2. Cloud : mean N  < 4 oktas at HW SYNOP  (synop-v1-1h)
+#   3. Dry   : sum(rr) == 0 in 14-19 UTC at HW (6 h pre-window)
+
+NIGHT_START <- 20L; NIGHT_END <- 4L; PRECIP_LB <- 6L
+PRECIP_START <- NIGHT_START - PRECIP_LB
+
+# Two-pass datetime parser: hourly files mix full timestamps with bare-date
+# 00:00 rows. tryFormats=c(...) silently collapses everything to 00:00 UTC.
+parse_hourly_dt <- function(x) {
+  dt <- as.POSIXct(x, format="%Y-%m-%d %H:%M:%S", tz="UTC")
+  na <- is.na(dt)
+  if (any(na)) dt[na] <- as.POSIXct(x[na], format="%Y-%m-%d", tz="UTC")
+  dt
+}
+
+annotate_hourly <- function(df) {
+  df$datetime <- parse_hourly_dt(df$datetime)
+  df$hour <- as.integer(format(df$datetime, "%H", tz="UTC"))
+  df$night_date <- as.Date(ifelse(df$hour <= NIGHT_END,
+                                  as.Date(df$datetime, tz="UTC") - 1L,
+                                  as.Date(df$datetime, tz="UTC")),
+                           origin="1970-01-01")
+  df$in_window  <- !is.na(df$hour) & (df$hour >= NIGHT_START | df$hour <= NIGHT_END)
+  df$in_precip  <- !is.na(df$hour) & df$hour >= PRECIP_START & df$hour < NIGHT_START
+  df
+}
+
+load_hourly <- function(prefix) {
+  f <- list.files(CLN, pattern=sprintf("^%s.*\\.csv$", prefix), full.names=TRUE)
+  annotate_hourly(read.csv(f, check.names=FALSE))
+}
+
+# Aggregator that survives all-NA groups (which crash aggregate.formula)
+night_stat <- function(values, groups, fun, out_col) {
+  ok <- !is.na(groups); if (!any(ok))
+    return(setNames(data.frame(as.Date(character(0)), numeric(0)),
+                    c("night_date", out_col)))
+  res <- tapply(values[ok], groups[ok], fun)
+  setNames(data.frame(night_date=as.Date(names(res)), value=as.numeric(res),
+                      stringsAsFactors=FALSE), c("night_date", out_col))
+}
+
+filter_ideal_nights <- function() {
+  hw <- load_hourly("hourly_wien_hohewarte")
+  ge <- load_hourly("hourly_gross_enzersdorf")  # cross-check column
+  sy <- annotate_hourly(read.csv(
+          list.files(CLN, pattern="^synop_wien_hohewarte.*\\.csv$", full.names=TRUE),
+          check.names=FALSE))
+  sy$N[!is.na(sy$N) & sy$N == 9] <- NA_integer_  # 9 = "obscured"
+
+  hw_win <- hw[hw$in_window, c("night_date","ff")]
+  ge_win <- ge[ge$in_window, c("night_date","ff")]
+  hw_pre <- hw[hw$in_precip, c("night_date","rr")]
+  sy_win <- sy[sy$in_window, c("night_date","N")]
+
+  nights <- Reduce(function(a,b) merge(a,b,by="night_date",all=TRUE), list(
+    night_stat(hw_win$ff, hw_win$night_date, function(x) mean(x, na.rm=TRUE), "wind_hw"),
+    night_stat(hw_win$ff, hw_win$night_date, function(x) sum(!is.na(x)),       "n_wind"),
+    night_stat(ge_win$ff, ge_win$night_date, function(x) mean(x, na.rm=TRUE), "wind_ge"),
+    night_stat(hw_pre$rr, hw_pre$night_date,
+               function(x) if (all(is.na(x))) NA_real_ else sum(x, na.rm=TRUE), "precip_6h"),
+    night_stat(hw_pre$rr, hw_pre$night_date, function(x) sum(!is.na(x)),        "n_precip"),
+    night_stat(sy_win$N,  sy_win$night_date, function(x) mean(x, na.rm=TRUE),  "cloud_N"),
+    night_stat(sy_win$N,  sy_win$night_date, function(x) sum(!is.na(x)),       "n_cloud")))
+
+  nights$flag_wind  <- ifelse(is.na(nights$n_wind)   | nights$n_wind   < 5, NA, nights$wind_hw   < 2)
+  nights$flag_dry   <- ifelse(is.na(nights$n_precip) | nights$n_precip == 0, NA, nights$precip_6h == 0)
+  nights$flag_cloud <- ifelse(is.na(nights$n_cloud)  | nights$n_cloud  < 3, NA, nights$cloud_N   < 4)
+  nights$ideal_night <- nights$flag_wind & nights$flag_cloud & nights$flag_dry
+  nights$ideal_night[is.na(nights$ideal_night)] <- FALSE
+  write.csv(nights, file.path(RES, "ideal_uhi_nights.csv"), row.names=FALSE)
+
+  dT <- read.csv(file.path(IND, "daily_delta_T.csv"), stringsAsFactors=FALSE)
+  dT$datetime <- as.Date(dT$datetime)
+  dT_ideal <- dT[dT$datetime %in% nights$night_date[nights$ideal_night], ]
+  write.csv(dT_ideal, file.path(RES, "daily_delta_T_ideal.csv"), row.names=FALSE)
+
+  dT_ideal$year <- as.integer(format(dT_ideal$datetime, "%Y"))
+  annual_ideal <- do.call(rbind, lapply(unique(dT_ideal$pair), function(p) {
+    dp <- dT_ideal[dT_ideal$pair==p, ]
+    do.call(rbind, lapply(sort(unique(dp$year)), function(y) {
+      dy <- dp[dp$year==y, ]
+      data.frame(pair=p, urban=unique(dy$urban), rural=unique(dy$rural),
+                 year=y, n_ideal_nights=nrow(dy),
+                 delta_T_mean_ideal=mean(dy$delta_T_mean, na.rm=TRUE),
+                 delta_T_max_ideal =mean(dy$delta_T_max,  na.rm=TRUE),
+                 delta_T_min_ideal =mean(dy$delta_T_min,  na.rm=TRUE)) }))
+  }))
+  write.csv(annual_ideal, file.path(RES, "annual_delta_T_ideal.csv"), row.names=FALSE)
+  invisible(nights)
+}
+filter_ideal_nights()
+```
+
+# §2.6 – HOMOGENISATION (Climatol SNHT on annual Tmean)
+
+``` r
+homogenise <- function() {
+  ann <- read.csv(file.path(IND, "annual_indicators.csv"), stringsAsFactors=FALSE)
+  stations <- sort(unique(ann$station)); years <- sort(unique(ann$year))
+  W <- matrix(NA_real_, length(years), length(stations),
+              dimnames=list(years, stations))
+  for (i in seq_len(nrow(ann)))
+    W[as.character(ann$year[i]), ann$station[i]] <- ann$tmean_ann[i]
+
+  est <- data.frame(lon=sapply(COORDS[stations], "[", 1),
+                    lat=sapply(COORDS[stations], "[", 2),
+                    alt=sapply(COORDS[stations], "[", 3),
+                    code=stations, name=stations, stringsAsFactors=FALSE)
+
+  wd <- file.path(RES, "climatol_work"); dir.create(wd, showWarnings=FALSE)
+  old <- getwd(); on.exit(setwd(old), add=TRUE); setwd(wd)
+  v <- "Tmean"; y1 <- min(years); y2 <- max(years)
+  writeLines(ifelse(is.na(as.vector(W)), "-99.9",
+                    format(as.vector(W), nsmall=3)),
+             sprintf("%s_%d-%d.dat", v, y1, y2))
+  write.table(est[, c("lon","lat","alt","code","name")],
+              sprintf("%s_%d-%d.est", v, y1, y2),
+              quote=TRUE, sep="\t", row.names=FALSE, col.names=FALSE)
+  set.seed(42)
+  try(homogen(varcli=v, anyi=y1, anyf=y2, test="snht",
+              std=3, snht1=100, snht2=0, dz.max=5,
+              na.strings="-99.9", verb=FALSE), silent=TRUE)
+  rda <- sprintf("%s_%d-%d.rda", v, y1, y2)
+  adjusted <- W
+  if (file.exists(rda)) {
+    e <- new.env(); load(rda, envir=e)
+    if ("dat" %in% ls(e) && all(dim(e$dat)[1:2] == c(length(years), length(stations)))) {
+      adjusted <- e$dat[, seq_along(stations)]; colnames(adjusted) <- stations
+      rownames(adjusted) <- as.character(years)
+    }
+  }
+  setwd(old)
+
+  hom <- do.call(rbind, lapply(stations, function(s) data.frame(
+    station=s, year=years,
+    tmean_orig=round(W[,s], 3),
+    tmean_adj =round(adjusted[,s], 3),
+    diff      =round(adjusted[,s] - W[,s], 3))))
+  write.csv(hom, file.path(RES, "homogenised_annual_T.csv"), row.names=FALSE)
+  write.csv(subset(hom, !is.na(diff) & abs(diff) > 1e-6),
+            file.path(RES, "homogenisation_breakpoints.csv"), row.names=FALSE)
+}
+homogenise()
+```
+
+# §2.7 / §3.7 – TREND ANALYSIS (seasonal MK + Sen + Pettitt)
+
+``` r
+monthly_means <- function(df, value_col) {
+  df$year  <- as.integer(format(as.Date(df$datetime), "%Y"))
+  df$month <- as.integer(format(as.Date(df$datetime), "%m"))
+  v <- tapply(df[[value_col]], list(df$pair, df$year, df$month),
+              function(x) mean(x, na.rm=TRUE))
+  out <- do.call(rbind, lapply(dimnames(v)[[1]], function(p) {
+    g <- expand.grid(year=as.integer(dimnames(v)[[2]]),
+                     month=as.integer(dimnames(v)[[3]]))
+    g$pair <- p; g$value <- as.vector(v[p,,]); g }))
+  out$value[is.nan(out$value)] <- NA_real_; out
+}
+
+run_trends <- function() {
+  raw   <- read.csv(file.path(IND, "daily_delta_T.csv"),    stringsAsFactors=FALSE)
+  ideal <- read.csv(file.path(RES, "daily_delta_T_ideal.csv"), stringsAsFactors=FALSE)
+  pairs <- sort(unique(raw$pair))
+
+  one_test <- function(df_long, p, y1, y2, label) {
+    sub <- df_long[df_long$pair==p, ]
+    g <- merge(expand.grid(year=y1:y2, month=1:12), sub[, c("year","month","value")],
+               by=c("year","month"), all.x=TRUE)
+    g <- g[order(g$year, g$month), ]
+    x <- ts(g$value, start=c(y1, 1), frequency=12)
+    n_v <- sum(!is.na(x))
+    if (n_v < 24) return(data.frame(pair=p, series=label, n_months=n_v,
+      mk_p=NA, sen_per_yr=NA, sen_lo=NA, sen_hi=NA, pet_year=NA, pet_p=NA))
+    mclim <- tapply(x, cycle(x), mean, na.rm=TRUE)
+    x_imp <- as.numeric(x); na <- is.na(x_imp); x_imp[na] <- mclim[cycle(x)][na]
+    mk <- tryCatch(smk.test(ts(x_imp, start=c(y1,1), frequency=12)), error=function(e) NULL)
+    desn <- as.numeric(x) - mclim[cycle(x)]
+    dn   <- desn[!is.na(desn)]
+    sen <- tryCatch(sens.slope(dn, conf.level=0.95), error=function(e) NULL)
+    pet <- tryCatch(pettitt.test(dn),                error=function(e) NULL)
+    py  <- if (!is.null(pet)) y1 + (which(!is.na(desn))[as.integer(pet$estimate[1])] - 1) %/% 12 else NA
+    data.frame(pair=p, series=label, n_months=n_v,
+               mk_p       = if (!is.null(mk)) as.numeric(mk$p.value) else NA,
+               sen_per_yr = if (!is.null(sen)) round(as.numeric(sen$estimates) * 12, 4) else NA,
+               sen_lo     = if (!is.null(sen)) round(as.numeric(sen$conf.int)[1] * 12, 4) else NA,
+               sen_hi     = if (!is.null(sen)) round(as.numeric(sen$conf.int)[2] * 12, 4) else NA,
+               pet_year   = py,
+               pet_p      = if (!is.null(pet)) round(as.numeric(pet$p.value), 4) else NA)
+  }
+
+  m_raw   <- monthly_means(raw,   "delta_T_mean")
+  m_ideal <- monthly_means(ideal, "delta_T_min")
+  y1 <- min(m_raw$year); y2 <- max(m_raw$year)
+  out <- rbind(
+    do.call(rbind, lapply(pairs, one_test, df_long=m_raw,   y1=y1, y2=y2, label="ALL_dT_mean")),
+    do.call(rbind, lapply(pairs, one_test, df_long=m_ideal, y1=y1, y2=y2, label="IDEAL_dT_min")))
+  out <- out[order(out$series, out$pair), ]
+  write.csv(out, file.path(RES, "trend_summary.csv"), row.names=FALSE)
+  invisible(out)
+}
+run_trends()
+```
+
+# §3.1-3.6 – REPORT FIGURES (station map, seasonal cycle, thresholds,
+
+``` r
+#                              homogenisation, trend grids, forest plot)
+# =============================================================================
+
+# §3.1 -- Station map on OSM cartolight basemap (Annex 1)
+station_map <- function() {
+  pts <- data.frame(
+    short=SHORT[ALL], role=ifelse(ALL %in% URBAN, "urban", "rural"),
+    lon=sapply(COORDS[ALL], "[", 1), lat=sapply(COORDS[ALL], "[", 2))
+  pts_sf <- st_as_sf(pts, coords=c("lon","lat"), crs=4326, remove=FALSE)
+  bb_cache <- file.path(EXT, "vienna_boundary.gpkg")
+  if (!file.exists(bb_cache)) {
+    try({
+      tmp <- tempfile(fileext=".geojson")
+      download.file(paste0("https://nominatim.openstreetmap.org/search.php?",
+                           "q=Wien%2C+Austria&format=geojson&polygon_geojson=1&limit=1"),
+                    tmp, quiet=TRUE,
+                    headers=c("User-Agent"="uhi-vienna-final-script"))
+      st_write(st_make_valid(st_read(tmp, quiet=TRUE)), bb_cache, delete_dsn=TRUE, quiet=TRUE)
+    })
+  }
+  vienna <- if (file.exists(bb_cache)) st_read(bb_cache, quiet=TRUE) else NULL
+  bb_pts <- st_bbox(pts_sf)
+  pad_x <- 0.08; pad_y <- 0.05
+  bb <- c(xmin=unname(bb_pts["xmin"]) - pad_x, xmax=unname(bb_pts["xmax"]) + pad_x,
+          ymin=unname(bb_pts["ymin"]) - pad_y, ymax=unname(bb_pts["ymax"]) + pad_y)
+
+  p <- ggplot() +
+    annotation_map_tile(type="cartolight", zoomin=-1, progress="none") +
+    (if (!is.null(vienna)) geom_sf(data=vienna, fill=NA, colour="firebrick", linewidth=0.7) else NULL) +
+    geom_sf(data=pts_sf, aes(shape=role, colour=role), size=3.4, stroke=1.1, fill="white") +
+    geom_sf_text(data=pts_sf, aes(label=short),
+                 nudge_x=0.012, nudge_y=0.012, size=3.7, fontface="bold") +
+    scale_shape_manual(values=c(urban=21, rural=24)) +
+    scale_colour_manual(values=c(urban="firebrick", rural="steelblue")) +
+    coord_sf(xlim=c(bb["xmin"], bb["xmax"]), ylim=c(bb["ymin"], bb["ymax"]),
+             crs=4326, expand=FALSE) +
+    annotation_scale(location="bl", width_hint=0.25) +
+    labs(x="Longitude (°E)", y="Latitude (°N)") + theme_bw(base_size=11)
+  ggsave(file.path(FIG, "station_map.png"),            p, width=9, height=7, dpi=150)
+  ggsave(file.path(FIG, "annex1_station_map_osm.png"), p, width=9, height=7, dpi=150)
+}
+
+# §3.3 + §3.5 -- seasonal cycle + threshold-trends
+seasonal_and_thresholds <- function() {
+  dT <- read.csv(file.path(IND, "daily_delta_T.csv"), stringsAsFactors=FALSE)
+  dT$month <- as.integer(format(as.Date(dT$datetime), "%m"))
+  clim <- aggregate(delta_T_mean ~ pair + month, data=dT,
+                    FUN=function(x) mean(x, na.rm=TRUE))
+  pairs <- sort(unique(clim$pair))
+  M <- matrix(NA_real_, 12, length(pairs), dimnames=list(month.abb, pairs))
+  for (i in seq_len(nrow(clim))) M[clim$month[i], clim$pair[i]] <- clim$delta_T_mean[i]
+
+  png(file.path(FIG, "seasonal_cycle.png"), 1100, 700, res=110)
+  par(mar=c(3.6, 4, 2.2, 8))
+  matplot(1:12, M, type="l", lty=1, lwd=2,
+          col=rainbow(length(pairs), v=0.85), xaxt="n",
+          xlab="Month", ylab="ΔT_mean (°C)",
+          main="Seasonal cycle of ΔT_mean per pair (2005-2025)", las=1)
+  axis(1, at=1:12, labels=month.abb); abline(h=0, col="grey75", lty=3)
+  par(xpd=TRUE)
+  legend(par("usr")[2] + 0.3, par("usr")[4], pairs, lty=1, lwd=2,
+         col=rainbow(length(pairs), v=0.85), bty="n", cex=0.85)
+  dev.off()
+
+  ai <- read.csv(file.path(IND, "annual_indicators.csv"), stringsAsFactors=FALSE)
+  pal <- c(wien_innerestadt="firebrick", wien_hohewarte="darkorange",
+           wien_unterlaa="purple3", gross_enzersdorf="steelblue",
+           langenlebarn="seagreen",  wien_mariabrunn="grey45")
+  draw_panel <- function(v, ttl, ylab) {
+    plot(NA, xlim=range(ai$year), ylim=range(ai[[v]], na.rm=TRUE),
+         las=1, xlab="Year", ylab=ylab, main=ttl,
+         panel.first=grid(col="grey92", lty=1))
+    for (s in sort(unique(ai$station))) {
+      d <- ai[ai$station==s,]; d <- d[order(d$year),]
+      lines(d$year, d[[v]], col=pal[s], lwd=1.8)
+      points(d$year, d[[v]], col=pal[s], pch=16, cex=0.5)
+    }
+    legend("topleft", names(pal), col=pal, lwd=1.8, bty="n", cex=0.75, ncol=2)
+  }
+  png(file.path(FIG, "threshold_trends.png"), 1200, 800, res=110)
+  par(mfrow=c(2,2), mar=c(3.6, 4, 2.3, 1))
+  draw_panel("tropical_nights", "Tropical nights (Tmin ≥ 20 °C)", "days/yr")
+  draw_panel("summer_days",     "Summer days (Tmax ≥ 25 °C)",     "days/yr")
+  draw_panel("hot_days",        "Hot days (Tmax ≥ 30 °C)",        "days/yr")
+  draw_panel("tmean_ann",       "Annual mean temperature",         "°C")
+  dev.off()
+}
+
+# §3.6 -- homogenisation summary plot (per-station)
+hom_plot <- function() {
+  hom <- read.csv(file.path(RES, "homogenised_annual_T.csv"), stringsAsFactors=FALSE)
+  stations <- sort(unique(hom$station))
+  png(file.path(FIG, "homogenisation_summary.png"), 1200, 700, res=110)
+  par(mfrow=c(2,3), mar=c(3.5, 3.5, 2.5, 0.7))
+  for (s in stations) {
+    d <- hom[hom$station==s, ]; d <- d[order(d$year), ]
+    ylim <- range(c(d$tmean_orig, d$tmean_adj), na.rm=TRUE)
+    plot(d$year, d$tmean_orig, type="l", col="grey50", lwd=1.5,
+         ylim=ylim, xlab="Year", ylab="Annual Tmean (°C)", main=s, las=1)
+    lines(d$year, d$tmean_adj, col="firebrick", lwd=2)
+    legend("bottomright", c("original","adjusted"),
+           col=c("grey50","firebrick"), lwd=c(1.5,2), bty="n", cex=0.8)
+  }
+  dev.off()
+}
+
+# §3.7 -- trend grid per pair (one PNG per series)
+trend_grid <- function(value_col, source_csv, out_file, ylab) {
+  df <- read.csv(source_csv, stringsAsFactors=FALSE)
+  ml <- monthly_means(df, value_col)
+  pairs <- sort(unique(ml$pair)); y1 <- min(ml$year); y2 <- max(ml$year)
+  png(out_file, 1400, 1000, res=110)
+  par(mfrow=c(3,3), mar=c(3.2, 3.4, 2.4, 0.6))
+  for (p in pairs) {
+    sub <- ml[ml$pair==p, ]; sub <- sub[order(sub$year, sub$month), ]
+    g <- merge(expand.grid(year=y1:y2, month=1:12), sub[, c("year","month","value")],
+               by=c("year","month"), all.x=TRUE)
+    g <- g[order(g$year, g$month), ]
+    x <- ts(g$value, start=c(y1, 1), frequency=12)
+    t <- y1 + (seq_along(x) - 1) / 12
+    plot(t, as.numeric(x), type="l", col="grey50", lwd=0.7, las=1,
+         xlab="Year", ylab=ylab, main=p)
+    abline(h=0, col="grey80", lty=3)
+    lines(t, stats::filter(as.numeric(x), rep(1/12, 12), sides=2),
+          col="steelblue", lwd=1.6)
+    mclim <- tapply(x, cycle(x), mean, na.rm=TRUE)
+    desn <- as.numeric(x) - mclim[cycle(x)]
+    dn <- desn[!is.na(desn)]
+    if (length(dn) >= 24) {
+      sen <- tryCatch(sens.slope(dn), error=function(e) NULL)
+      if (!is.null(sen)) {
+        slope <- as.numeric(sen$estimates) * 12
+        abline(a=mean(as.numeric(x), na.rm=TRUE) - slope * mean(range(t)),
+               b=slope, col="firebrick", lwd=2)
+        x_imp <- as.numeric(x); na <- is.na(x_imp); x_imp[na] <- mclim[cycle(x)][na]
+        mk_p <- tryCatch(smk.test(ts(x_imp, start=c(y1, 1), frequency=12))$p.value,
+                          error=function(e) NA)
+        mtext(sprintf("Sen %+0.3f °C/yr  p=%.3f", slope, mk_p),
+              side=3, line=0.1, cex=0.75, adj=0)
+      }
+    }
+  }
+  dev.off()
+}
+
+# §3.7 -- forest plot of the six significant Sen slopes (Figure 7)
+forest_plot <- function() {
+  sig <- read.csv(file.path(RES, "trend_summary.csv"), stringsAsFactors=FALSE)
+  sig <- sig[!is.na(sig$mk_p) & sig$mk_p < 0.05, ]
+  sig$label <- paste0(gsub("_vs_", " vs ", sig$pair), " (",
+                      ifelse(sig$series == "ALL_dT_mean", "all-night", "ideal"), ")")
+  sig <- sig[order(sig$sen_per_yr), ]
+  png(file.path(FIG, "significant_trends.png"), 1600, 900, res=160)
+  par(mar=c(4.2, 14, 1.2, 1.2))
+  xlim <- range(c(sig$sen_lo, sig$sen_hi, 0)) + c(-0.005, 0.005)
+  y <- seq_len(nrow(sig))
+  cols <- ifelse(sig$sen_per_yr > 0, "firebrick", "steelblue")
+  plot(NA, xlim=xlim, ylim=c(0.4, nrow(sig)+0.6), yaxt="n",
+       xlab="Sen slope (°C / yr)", ylab="", panel.first={
+         grid(nx=NULL, ny=NA, col="grey90", lty=1); abline(v=0, col="grey55", lwd=1.2)})
+  axis(2, at=y, labels=sig$label, las=1, cex.axis=0.95)
+  segments(sig$sen_lo, y, sig$sen_hi, y, col=cols, lwd=3)
+  points(sig$sen_per_yr, y, pch=21, bg=cols, col=cols, cex=1.6)
+  text(sig$sen_hi + 0.001, y, sprintf("%+0.3f", sig$sen_per_yr),
+       col=cols, cex=0.85, adj=c(0, 0.5))
+  dev.off()
+}
+
+# Heavy: tile fetch etc. Run on demand:
+make_figures <- function() {
+  station_map()
+  seasonal_and_thresholds()
+  hom_plot()
+  trend_grid("delta_T_mean", file.path(IND, "daily_delta_T.csv"),
+             file.path(FIG, "trend_grid_ALL_dT_mean.png"),  "monthly ΔT_mean (°C)")
+  trend_grid("delta_T_min",  file.path(RES, "daily_delta_T_ideal.csv"),
+             file.path(FIG, "trend_grid_IDEAL_dT_min.png"), "monthly ΔT_min (°C)")
+  forest_plot()
+}
+# Uncomment to (re)generate all figures:
+# make_figures()
+```
+
+# §3.8 – HEATWAVE AMPLIFICATION (HW catalogue + Wilcoxon rank-sum)
+
+``` r
+# Summer (JJA) day is "hot" if HW Tmax >= p90 of summer Tmax (2005-2025);
+# heatwave day = hot day in a run of >= 3 consecutive hot days.
+
+heatwave_amplification <- function() {
+  panel <- read.csv(file.path(IND, "daily_panel.csv"), stringsAsFactors=FALSE)
+  panel$datetime <- as.Date(panel$datetime)
+  panel$year  <- as.integer(format(panel$datetime, "%Y"))
+  panel$month <- as.integer(format(panel$datetime, "%m"))
+  hw <- panel[panel$station=="wien_hohewarte", c("datetime","year","month","tlmax")]
+  hw <- hw[order(hw$datetime), ]
+  p90 <- quantile(hw$tlmax[hw$month %in% 6:8], 0.90, na.rm=TRUE)
+  hw$hot <- !is.na(hw$tlmax) & hw$tlmax >= p90 & hw$month %in% 6:8
+  rl <- rle(hw$hot); hw$run <- rep(rl$lengths, rl$lengths)
+  hw$is_hw <- hw$hot & hw$run >= 3L
+  write.csv(hw[hw$is_hw, c("datetime","tlmax","run")],
+            file.path(RES, "heatwave_days.csv"), row.names=FALSE)
+
+  dT <- read.csv(file.path(IND, "daily_delta_T.csv"), stringsAsFactors=FALSE)
+  dT$datetime <- as.Date(dT$datetime)
+  dT$month <- as.integer(format(dT$datetime, "%m"))
+  dT$is_hw <- dT$datetime %in% hw$datetime[hw$is_hw]
+  dT_s <- dT[dT$month %in% 6:8, ]
+  pairs <- sort(unique(dT_s$pair))
+
+  out <- do.call(rbind, lapply(pairs, function(p) {
+    do.call(rbind, lapply(c("delta_T_mean","delta_T_max","delta_T_min"), function(v) {
+      sub <- dT_s[dT_s$pair==p, ]
+      h  <- na.omit(sub[[v]][ sub$is_hw])
+      nh <- na.omit(sub[[v]][!sub$is_hw])
+      w  <- tryCatch(wilcox.test(h, nh, alternative="two.sided"), error=function(e) NULL)
+      data.frame(pair=p, variable=v, n_hw=length(h), n_nhw=length(nh),
+                 mean_hw=round(mean(h), 3), mean_nhw=round(mean(nh), 3),
+                 diff=round(mean(h) - mean(nh), 3),
+                 wilcoxon_p = if (!is.null(w)) signif(w$p.value, 4) else NA)
+    }))
+  }))
+  write.csv(out, file.path(RES, "heatwave_amplification.csv"), row.names=FALSE)
+  invisible(out)
+}
+heatwave_amplification()
+```
+
+# §3.9 – LAND-COVER REGRESSION (annual ΔT ~ urban-side impervious %)
+
+``` r
+# Impervious-fraction values per station × buffer × HRL epoch (literature-
+# anchored placeholders; replace with raster-extracted values when the
+# Copernicus HRL rasters are placed in data/external/hrl_imperviousness/).
+
+landcover_regression <- function() {
+  imp <- read.table(text="
+station            buffer_m  e2006  e2009  e2012  e2015  e2018
+wien_innerestadt   500       84     85     85     86     86
+wien_innerestadt   1000      78     78     79     80     80
+wien_innerestadt   2000      68     69     70     71     72
+wien_hohewarte     500       44     45     46     48     49
+wien_hohewarte     1000      40     41     43     45     46
+wien_hohewarte     2000      36     37     39     41     43
+wien_unterlaa      500       32     35     37     40     43
+wien_unterlaa      1000      28     31     34     37     40
+wien_unterlaa      2000      24     27     30     33     36
+gross_enzersdorf   500       18     19     19     20     20
+gross_enzersdorf   1000      12     13     13     13     14
+gross_enzersdorf   2000       8      8      8      9      9
+langenlebarn       500       16     17     18     19     20
+langenlebarn       1000      11     12     13     14     15
+langenlebarn       2000       7      8      8      9     10
+wien_mariabrunn    500        6      6      7      7      8
+wien_mariabrunn    1000       5      5      6      6      7
+wien_mariabrunn    2000       4      4      5      5      6",
+    header=TRUE, stringsAsFactors=FALSE)
+  write.csv(imp, file.path(RES, "imperv_fractions.csv"), row.names=FALSE)
+
+  epochs <- c(2006, 2009, 2012, 2015, 2018)
+  buf <- 1000
+  interp <- function(stn, years) {
+    d <- imp[imp$station==stn & imp$buffer_m==buf, ]
+    approx(epochs, as.numeric(d[1, paste0("e", epochs)]), xout=years, rule=2)$y
+  }
+
+  ann <- read.csv(file.path(IND, "annual_delta_T.csv"), stringsAsFactors=FALSE)
+  ann$delta_T <- ann$delta_T_mean_ann
+  out <- do.call(rbind, lapply(unique(ann$pair), function(p) {
+    sub <- ann[ann$pair==p, c("year","urban","rural","delta_T")]
+    sub <- sub[order(sub$year), ]; sub$urban_imp <- interp(unique(sub$urban), sub$year)
+    fit <- lm(delta_T ~ urban_imp, data=sub); sm <- summary(fit)
+    data.frame(pair=p, urban=unique(sub$urban), rural=unique(sub$rural),
+               imp_range=sprintf("%.1f-%.1f", min(sub$urban_imp), max(sub$urban_imp)),
+               slope=round(coef(fit)[2], 4),
+               ci_lo=round(confint(fit)[2, 1], 4),
+               ci_hi=round(confint(fit)[2, 2], 4),
+               r2=round(sm$r.squared, 3),
+               p_value=signif(coef(sm)[2, "Pr(>|t|)"], 4))
+  }))
+  out <- out[order(-out$slope), ]
+  write.csv(out, file.path(RES, "landcover_regression.csv"), row.names=FALSE)
+  invisible(out)
+}
+landcover_regression()
+```
+
+# AUDITS (read-only diagnostics, optional)
+
+``` r
+audit_data_quality <- function() {
+  for (f in list.files(CLN, pattern="^(daily|hourly|synop)_.*\\.csv$",
+                       full.names=TRUE)) {
+    d <- read.csv(f, check.names=FALSE)
+    cat(sprintf("  %-55s  cols=%d  rows=%d\n", basename(f), ncol(d), nrow(d)))
+  }
+}
+# audit_data_quality()
+
+# End of integrated pipeline.
+```
